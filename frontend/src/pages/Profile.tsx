@@ -15,20 +15,19 @@ import {
   Divider,
 } from "@mui/material";
 import { Person as PersonIcon } from "@mui/icons-material";
-import { RootState } from "../store";
+import { RootState, AppDispatch } from "../store";
 import { getCurrentUser } from "../store/slices/authSlice";
+import * as Yup from "yup";
+import { useFormik } from "formik";
+import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 const Profile = () => {
-  const dispatch = useDispatch();
-  const { user, isLoading } = useSelector((state: RootState) => state.auth);
-
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    current_password: "",
-    new_password: "",
-    new_password_confirmation: "",
-  });
+  const dispatch = useDispatch<AppDispatch>();
+  const { user, isLoading, token } = useSelector(
+    (state: RootState) => state.auth
+  );
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -39,48 +38,106 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // @ts-ignore
     dispatch(getCurrentUser());
   }, [dispatch]);
 
-  useEffect(() => {
-    if (user) {
-      setFormData((prev) => ({
-        ...prev,
-        name: user.name || "",
-        email: user.email || "",
-      }));
-    }
-  }, [user]);
+  // Form validation schema
+  const validationSchema = Yup.object({
+    name: Yup.string().required("Name is required"),
+    current_password: Yup.string().when("new_password", {
+      is: (val: string) => val && val.length > 0,
+      then: (schema) => schema.required("Current password is required"),
+      otherwise: (schema) => schema,
+    }),
+    new_password: Yup.string()
+      .min(8, "Password must be at least 8 characters")
+      .matches(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        "Password must contain at least one uppercase letter, one lowercase letter, and one number"
+      ),
+    new_password_confirmation: Yup.string()
+      .oneOf([Yup.ref("new_password")], "Passwords must match")
+      .when("new_password", {
+        is: (val: string) => val && val.length > 0,
+        then: (schema) => schema.required("Please confirm your password"),
+        otherwise: (schema) => schema,
+      }),
+  });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  const formik = useFormik({
+    initialValues: {
+      name: user?.name || "",
+      email: user?.email || "",
+      current_password: "",
+      new_password: "",
+      new_password_confirmation: "",
+    },
+    validationSchema,
+    enableReinitialize: true,
+    onSubmit: async (values) => {
+      setSaving(true);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // This would normally update the user profile
-    // For now, just show a success message
-    setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      setSnackbar({
-        open: true,
-        message: "Profile updated successfully",
-        severity: "success",
-      });
-      setFormData((prev) => ({
-        ...prev,
-        current_password: "",
-        new_password: "",
-        new_password_confirmation: "",
-      }));
-    }, 1000);
-  };
+      try {
+        // Only send password update request if new password is provided
+        if (values.new_password) {
+          await axios.put(
+            `${API_URL}/update-password`,
+            {
+              current_password: values.current_password,
+              new_password: values.new_password,
+              new_password_confirmation: values.new_password_confirmation,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+        }
+
+        setSnackbar({
+          open: true,
+          message: "Profile updated successfully",
+          severity: "success",
+        });
+
+        // Reset password fields and their validation state
+        formik.resetForm({
+          values: {
+            ...values,
+            current_password: "",
+            new_password: "",
+            new_password_confirmation: "",
+          },
+          touched: {
+            ...formik.touched,
+            current_password: false,
+            new_password: false,
+            new_password_confirmation: false,
+          },
+          errors: {
+            ...formik.errors,
+            current_password: undefined,
+            new_password: undefined,
+            new_password_confirmation: undefined,
+          },
+        });
+      } catch (error: any) {
+        const errorMessage =
+          error.response?.data?.message ||
+          error.response?.data?.errors?.new_password?.[0] ||
+          "An error occurred while updating your profile";
+
+        setSnackbar({
+          open: true,
+          message: errorMessage,
+          severity: "error",
+        });
+      } finally {
+        setSaving(false);
+      }
+    },
+  });
 
   if (isLoading) {
     return (
@@ -138,7 +195,8 @@ const Profile = () => {
             </Box>
             <Divider sx={{ my: 2 }} />
             <Typography variant="body2" color="text.secondary" paragraph>
-              Member since: {new Date().toLocaleDateString()}
+              Member since:{" "}
+              {new Date(user?.created_at || Date.now()).toLocaleDateString()}
             </Typography>
           </Paper>
         </Grid>
@@ -150,15 +208,18 @@ const Profile = () => {
             </Typography>
             <Divider sx={{ mb: 3 }} />
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={formik.handleSubmit}>
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
                     label="Full Name"
                     name="name"
-                    value={formData.name}
-                    onChange={handleChange}
+                    value={formik.values.name}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    error={formik.touched.name && Boolean(formik.errors.name)}
+                    helperText={formik.touched.name && formik.errors.name}
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -166,8 +227,8 @@ const Profile = () => {
                     fullWidth
                     label="Email Address"
                     name="email"
-                    value={formData.email}
-                    onChange={handleChange}
+                    value={formik.values.email}
+                    onChange={formik.handleChange}
                     disabled
                     helperText="Email cannot be changed"
                   />
@@ -185,8 +246,17 @@ const Profile = () => {
                     label="Current Password"
                     name="current_password"
                     type="password"
-                    value={formData.current_password}
-                    onChange={handleChange}
+                    value={formik.values.current_password}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    error={
+                      formik.touched.current_password &&
+                      Boolean(formik.errors.current_password)
+                    }
+                    helperText={
+                      formik.touched.current_password &&
+                      formik.errors.current_password
+                    }
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -195,8 +265,16 @@ const Profile = () => {
                     label="New Password"
                     name="new_password"
                     type="password"
-                    value={formData.new_password}
-                    onChange={handleChange}
+                    value={formik.values.new_password}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    error={
+                      formik.touched.new_password &&
+                      Boolean(formik.errors.new_password)
+                    }
+                    helperText={
+                      formik.touched.new_password && formik.errors.new_password
+                    }
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -205,8 +283,17 @@ const Profile = () => {
                     label="Confirm New Password"
                     name="new_password_confirmation"
                     type="password"
-                    value={formData.new_password_confirmation}
-                    onChange={handleChange}
+                    value={formik.values.new_password_confirmation}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    error={
+                      formik.touched.new_password_confirmation &&
+                      Boolean(formik.errors.new_password_confirmation)
+                    }
+                    helperText={
+                      formik.touched.new_password_confirmation &&
+                      formik.errors.new_password_confirmation
+                    }
                   />
                 </Grid>
 

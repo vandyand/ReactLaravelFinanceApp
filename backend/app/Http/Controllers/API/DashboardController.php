@@ -129,10 +129,10 @@ class DashboardController extends Controller
      */
     private function getSpendingByCategory($userId)
     {
-        return Transaction::where('user_id', $userId)
-            ->where('type', 'expense')
-            ->whereMonth('transaction_date', now()->month)
-            ->whereYear('transaction_date', now()->year)
+        return Transaction::where('transactions.user_id', $userId)
+            ->where('transactions.type', 'expense')
+            ->whereMonth('transactions.transaction_date', now()->month)
+            ->whereYear('transactions.transaction_date', now()->year)
             ->join('categories', 'transactions.category_id', '=', 'categories.id')
             ->select(
                 'categories.name',
