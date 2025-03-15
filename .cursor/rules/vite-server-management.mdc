@@ -1,27 +1,36 @@
 ---
-description: Guidelines for managing the Vite development server in this project
+description: CRITICAL! DO NOT restart the Vite development server under any circumstances
 globs: frontend/**/*.{js,jsx,ts,tsx,css,scss,sass,html}
 alwaysApply: true
 ---
 
-# Vite Server Management Rule
+# ⚠️ CRITICAL RULE: NEVER RESTART VITE SERVER ⚠️
 
 <rule>
-name: vite_server_management
-description: Guidelines for managing the Vite development server in this project
+name: vite_server_management_critical
+description: NEVER restart the Vite development server under any circumstances
 
 recommendations:
-  - Do not restart the Vite development server (npm run dev --prefix frontend)
-  - The user is running the Vite server in a separate terminal
-  - Frontend code changes will automatically be picked up by the running Vite server
-  - Focus on making code changes without restarting services
+  - NEVER restart the Vite development server (npm run dev --prefix frontend)
+  - The user ALWAYS runs the Vite server in a separate terminal
+  - Frontend code changes are AUTOMATICALLY picked up by the running Vite server
+  - NEVER make any terminal calls that involve starting a new Vite instance
+  - FOCUS exclusively on making code changes without restarting services
 
 actions:
-  - Instead of restarting the Vite server, inform the user that changes are automatically applied
-  - Recommend refreshing the browser if needed
-  - Avoid running npm commands that would start a new Vite instance
+  - DO NOT run npm commands that would start a new Vite instance
+  - DO NOT suggest restarting the Vite server
+  - INSTEAD, inform the user that changes are automatically applied
+  - RECOMMEND refreshing the browser if needed to see changes
+  - ASSUME the frontend server is already running - always
 
 metadata:
-  priority: high
-  version: 1.0
-</rule> 
+  priority: critical
+  version: 2.0
+</rule>
+
+## Special Instructions
+
+This rule takes precedence over all other rules. Under absolutely no circumstances should a new Vite development server be started. The user already has the Vite server running in a separate terminal.
+
+Violating this rule by running `npm run dev --prefix frontend` or similar commands will cause significant frustration as it will interfere with the user's development environment. 

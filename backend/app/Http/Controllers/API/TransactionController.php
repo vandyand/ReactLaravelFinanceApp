@@ -40,12 +40,18 @@ class TransactionController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Support both start_date and date_from parameters
         if ($request->has('start_date')) {
             $query->where('transaction_date', '>=', $request->start_date);
+        } elseif ($request->has('date_from')) {
+            $query->where('transaction_date', '>=', $request->date_from);
         }
 
+        // Support both end_date and date_to parameters
         if ($request->has('end_date')) {
             $query->where('transaction_date', '<=', $request->end_date);
+        } elseif ($request->has('date_to')) {
+            $query->where('transaction_date', '<=', $request->date_to);
         }
 
         if ($request->has('search')) {

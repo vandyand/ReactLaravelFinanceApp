@@ -64,9 +64,10 @@ import { RootState } from "../store";
 // Transaction type
 interface Transaction {
   id: number;
+  user_id: number;
   account_id: number;
   category_id: number | null;
-  amount: number;
+  amount: number | string;
   name: string;
   description: string | null;
   transaction_date: string;
@@ -181,12 +182,23 @@ const Transactions = () => {
 
   // Format date
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    // Fix for timezone issue: Parse the date parts directly to prevent timezone shifts
+    const [year, month, day] = dateString.split("T")[0].split("-").map(Number);
+    // Create date with explicit year, month (0-indexed), and day
+    const date = new Date(year, month - 1, day);
+
     return new Intl.DateTimeFormat("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
     }).format(date);
+  };
+
+  // Format date for API
+  const formatDateForApi = (date: Date | null): string | null => {
+    if (!date) return null;
+    // Format as YYYY-MM-DD
+    return date.toISOString().split("T")[0];
   };
 
   // Fetch accounts and categories
@@ -221,61 +233,92 @@ const Transactions = () => {
     fetchAccountsAndCategories();
   }, [token, API_URL]);
 
-  // Fetch transactions
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      setLoading(true);
-      try {
-        // Prepare query parameters
-        const params = new URLSearchParams();
-        params.append("page", (page + 1).toString());
-        params.append("limit", rowsPerPage.toString());
+  // Fetch transactions function
+  const fetchTransactions = async () => {
+    setLoading(true);
+    try {
+      // Prepare query parameters
+      const params = new URLSearchParams();
+      params.append("page", (page + 1).toString());
+      // Ensure we're using the correct parameter name for Laravel pagination
+      params.append("per_page", rowsPerPage.toString()); // 'per_page' instead of 'limit'
 
-        if (filters.search) params.append("search", filters.search);
-        if (filters.account_id)
-          params.append("account_id", filters.account_id.toString());
-        if (filters.category_id)
-          params.append("category_id", filters.category_id.toString());
-        if (filters.type) params.append("type", filters.type);
-        if (filters.date_from)
-          params.append(
-            "date_from",
-            filters.date_from.toISOString().split("T")[0]
-          );
-        if (filters.date_to)
-          params.append("date_to", filters.date_to.toISOString().split("T")[0]);
+      if (filters.search) params.append("search", filters.search);
+      if (filters.account_id)
+        params.append("account_id", filters.account_id.toString());
+      if (filters.category_id)
+        params.append("category_id", filters.category_id.toString());
+      if (filters.type) params.append("type", filters.type);
 
-        // Tab filter
-        if (tabValue === 1) params.append("type", "income");
-        if (tabValue === 2) params.append("type", "expense");
+      // Properly format dates for the API
+      const fromDate = formatDateForApi(filters.date_from);
+      const toDate = formatDateForApi(filters.date_to);
 
-        const response = await axios.get(
-          `${API_URL}/transactions?${params.toString()}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+      if (fromDate) {
+        params.append("date_from", fromDate);
+      }
 
-        if (response.data && response.data.success) {
-          setTransactions(response.data.data || []);
-          setTotalTransactions(response.data.meta?.total || 0);
-        } else {
-          setError("Failed to fetch transactions");
-          setTransactions([]);
-          setTotalTransactions(0);
+      if (toDate) {
+        params.append("date_to", toDate);
+      }
+
+      // Tab filter
+      if (tabValue === 1) params.append("type", "income");
+      if (tabValue === 2) params.append("type", "expense");
+
+      const response = await axios.get(
+        `${API_URL}/transactions?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      } catch (err) {
-        console.error("Error fetching transactions:", err);
-        setError("An error occurred while fetching transactions");
+      );
+
+      if (response.data && response.data.success) {
+        // Based on your console logs, the response has a specific structure:
+        // response.data.data contains properties:
+        // - current_page, data (array of transactions), first_page_url, etc.
+
+        let transactionsData = [];
+        let total = 0;
+
+        if (response.data.data) {
+          // Check if data is in Laravel's paginated response format
+          if (
+            response.data.data.data &&
+            Array.isArray(response.data.data.data)
+          ) {
+            // This is the format in your logs - data.data is the array of transactions
+            transactionsData = response.data.data.data;
+            total = response.data.data.total || 0;
+          } else if (Array.isArray(response.data.data)) {
+            // Direct array of transactions
+            transactionsData = response.data.data;
+            total = transactionsData.length;
+          }
+        }
+
+        setTransactions(transactionsData);
+        setTotalTransactions(total);
+      } else {
+        console.error("API response indicates failure:", response.data);
+        setError("Failed to fetch transactions");
         setTransactions([]);
         setTotalTransactions(0);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (err) {
+      console.error("Error fetching transactions:", err);
+      setError("An error occurred while fetching transactions");
+      setTransactions([]);
+      setTotalTransactions(0);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Fetch transactions on component mount and when dependencies change
+  useEffect(() => {
     fetchTransactions();
   }, [token, API_URL, page, rowsPerPage, filters, tabValue]);
 
@@ -402,7 +445,6 @@ const Transactions = () => {
   // Handle transaction menu close
   const handleTransactionMenuClose = () => {
     setAnchorEl(null);
-    setSelectedTransactionId(null);
   };
 
   // Handle edit transaction
@@ -440,7 +482,9 @@ const Transactions = () => {
 
   // Confirm delete transaction
   const confirmDelete = async () => {
-    if (!selectedTransactionId) return;
+    if (!selectedTransactionId) {
+      return;
+    }
 
     setActionInProgress(true);
     try {
@@ -454,6 +498,7 @@ const Transactions = () => {
       );
 
       if (response.data.success) {
+        // Remove the deleted transaction from the state
         setTransactions(
           transactions.filter(
             (transaction) => transaction.id !== selectedTransactionId
@@ -464,12 +509,25 @@ const Transactions = () => {
           message: "Transaction deleted successfully",
           severity: "success",
         });
+        // Refresh the transactions list after deletion
+        fetchTransactions();
+      } else {
+        console.error("API indicated failure:", response.data);
+        setSnackbar({
+          open: true,
+          message:
+            "Failed to delete transaction: " +
+            (response.data.message || "Unknown error"),
+          severity: "error",
+        });
       }
     } catch (err) {
       console.error("Error deleting transaction:", err);
       setSnackbar({
         open: true,
-        message: "Failed to delete transaction",
+        message:
+          "Failed to delete transaction: " +
+          (err instanceof Error ? err.message : "Unknown error"),
         severity: "error",
       });
     } finally {
@@ -502,7 +560,11 @@ const Transactions = () => {
   const handleChangeRowsPerPage = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
+    // Update rowsPerPage from the event
+    const newRowsPerPage = parseInt(event.target.value, 10);
+    setRowsPerPage(newRowsPerPage);
+
+    // Reset to first page when changing rows per page
     setPage(0);
   };
 
@@ -512,6 +574,20 @@ const Transactions = () => {
       ...filters,
       [name]: value,
     });
+    // Reset to first page when changing filters
+    setPage(0);
+  };
+
+  // Handle date filter change specifically
+  const handleDateFilterChange = (
+    name: "date_from" | "date_to",
+    date: Date | null
+  ) => {
+    setFilters((prev) => ({
+      ...prev,
+      [name]: date,
+    }));
+    // Reset to first page when changing filters
     setPage(0);
   };
 
@@ -627,17 +703,25 @@ const Transactions = () => {
             <DatePicker
               label="From Date"
               value={filters.date_from}
-              onChange={(date) => handleFilterChange("date_from", date)}
+              onChange={(date) => handleDateFilterChange("date_from", date)}
               slotProps={{
-                textField: { size: "small", sx: { minWidth: "150px" } },
+                textField: {
+                  size: "small",
+                  sx: { minWidth: "150px" },
+                  onBlur: () => fetchTransactions(), // Trigger fetch on blur
+                },
               }}
             />
             <DatePicker
               label="To Date"
               value={filters.date_to}
-              onChange={(date) => handleFilterChange("date_to", date)}
+              onChange={(date) => handleDateFilterChange("date_to", date)}
               slotProps={{
-                textField: { size: "small", sx: { minWidth: "150px" } },
+                textField: {
+                  size: "small",
+                  sx: { minWidth: "150px" },
+                  onBlur: () => fetchTransactions(), // Trigger fetch on blur
+                },
               }}
             />
           </LocalizationProvider>
@@ -977,6 +1061,9 @@ const Transactions = () => {
             Are you sure you want to delete this transaction? This action cannot
             be undone.
           </Typography>
+          <Typography sx={{ mt: 2, fontWeight: "bold" }}>
+            Transaction ID: {selectedTransactionId}
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button
@@ -986,7 +1073,9 @@ const Transactions = () => {
             Cancel
           </Button>
           <Button
-            onClick={confirmDelete}
+            onClick={() => {
+              confirmDelete();
+            }}
             color="error"
             variant="contained"
             disabled={actionInProgress}
@@ -1092,21 +1181,29 @@ const Transactions = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {Array.isArray(transactions) &&
+              {Array.isArray(transactions) && transactions.length > 0 ? (
                 transactions.map((transaction) => (
                   <TableRow key={transaction.id}>
                     <TableCell>
-                      {formatDate(transaction.transaction_date)}
+                      {transaction.transaction_date
+                        ? formatDate(transaction.transaction_date)
+                        : "N/A"}
                     </TableCell>
-                    <TableCell>{transaction.name}</TableCell>
+                    <TableCell>
+                      {transaction.name ||
+                        transaction.description ||
+                        "Unnamed Transaction"}
+                    </TableCell>
                     <TableCell>
                       {transaction.category ? (
                         <Chip
                           label={transaction.category.name}
                           size="small"
                           sx={{
-                            backgroundColor: `${transaction.category.color}20`,
-                            color: transaction.category.color,
+                            backgroundColor: `${
+                              transaction.category.color || "#777"
+                            }20`,
+                            color: transaction.category.color || "#777",
                           }}
                         />
                       ) : (
@@ -1116,13 +1213,15 @@ const Transactions = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      {transaction.account?.name || "Unknown"}
+                      {transaction.account?.name || "Unknown Account"}
                     </TableCell>
                     <TableCell>
                       <Chip
                         label={
-                          transaction.status.charAt(0).toUpperCase() +
-                          transaction.status.slice(1)
+                          transaction.status
+                            ? transaction.status.charAt(0).toUpperCase() +
+                              transaction.status.slice(1)
+                            : "Unknown"
                         }
                         size="small"
                         color={
@@ -1146,7 +1245,9 @@ const Transactions = () => {
                         fontWeight="medium"
                       >
                         {transaction.type === "income" ? "+" : "-"}
-                        {formatCurrency(Math.abs(transaction.amount))}
+                        {formatCurrency(
+                          Math.abs(Number(transaction.amount) || 0)
+                        )}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
@@ -1156,11 +1257,20 @@ const Transactions = () => {
                           handleTransactionMenuClick(e, transaction.id)
                         }
                       >
-                        <MoreVertIcon fontSize="small" />
+                        <MoreVertIcon />
                       </IconButton>
                     </TableCell>
                   </TableRow>
-                ))}
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} align="center">
+                    <Typography variant="body2" color="text.secondary">
+                      No transactions found
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
