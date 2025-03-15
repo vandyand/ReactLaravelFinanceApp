@@ -41,9 +41,17 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        // Assign default role if roles are set up
+        // Assign default role if roles are set up and the role exists
         if (method_exists($user, 'assignRole')) {
-            $user->assignRole('user');
+            try {
+                // Check if the 'user' role exists before assigning
+                if (\Spatie\Permission\Models\Role::where('name', 'user')->exists()) {
+                    $user->assignRole('user');
+                }
+            } catch (\Exception $e) {
+                // Silently handle role assignment failure
+                // We can log this error if needed
+            }
         }
 
         return response()->json([

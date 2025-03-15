@@ -44,6 +44,14 @@ export const register = createAsyncThunk(
       const response = await axios.post(`${API_URL}/register`, userData);
       return response.data;
     } catch (error: any) {
+      // Enhanced error handling
+      if (error.response?.data?.errors) {
+        // Handle Laravel validation errors which come as an object
+        const errorMessages = Object.values(error.response.data.errors)
+          .flat()
+          .join(", ");
+        return rejectWithValue(errorMessages);
+      }
       return rejectWithValue(
         error.response?.data?.message || "Registration failed"
       );
