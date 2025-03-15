@@ -67,11 +67,14 @@ interface Transaction {
   account_id: number;
   category_id: number | null;
   amount: number;
-  description: string;
+  name: string;
+  description: string | null;
   transaction_date: string;
   type: "income" | "expense";
   status: "completed" | "pending" | "reconciled";
-  reference: string | null;
+  reference_number: string | null;
+  payment_method: string | null;
+  currency: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -255,15 +258,19 @@ const Transactions = () => {
           }
         );
 
-        if (response.data.success) {
-          setTransactions(response.data.data);
-          setTotalTransactions(response.data.meta.total);
+        if (response.data && response.data.success) {
+          setTransactions(response.data.data || []);
+          setTotalTransactions(response.data.meta?.total || 0);
         } else {
           setError("Failed to fetch transactions");
+          setTransactions([]);
+          setTotalTransactions(0);
         }
       } catch (err) {
         console.error("Error fetching transactions:", err);
         setError("An error occurred while fetching transactions");
+        setTransactions([]);
+        setTotalTransactions(0);
       } finally {
         setLoading(false);
       }
@@ -279,7 +286,7 @@ const Transactions = () => {
     amount: Yup.number()
       .required("Amount is required")
       .moreThan(0, "Amount must be greater than 0"),
-    description: Yup.string().required("Description is required"),
+    name: Yup.string().required("Name is required"),
     transaction_date: Yup.date()
       .required("Date is required")
       .max(new Date(), "Date cannot be in the future"),
@@ -289,7 +296,7 @@ const Transactions = () => {
     status: Yup.string()
       .oneOf(["completed", "pending", "reconciled"])
       .required("Status is required"),
-    reference: Yup.string().nullable(),
+    reference_number: Yup.string().nullable(),
     notes: Yup.string().nullable(),
   });
 
@@ -299,11 +306,12 @@ const Transactions = () => {
       account_id: "",
       category_id: "",
       amount: "",
+      name: "",
       description: "",
       transaction_date: new Date(),
       type: "expense",
       status: "completed",
-      reference: "",
+      reference_number: "",
       notes: "",
     },
     validationSchema: validationSchema,
@@ -343,6 +351,8 @@ const Transactions = () => {
               severity: "success",
             });
             handleCloseDialog();
+            // Refresh transactions
+            setPage(0);
           }
         } else if (dialogMode === "edit" && currentTransaction) {
           // Update existing transaction
@@ -363,6 +373,8 @@ const Transactions = () => {
               severity: "success",
             });
             handleCloseDialog();
+            // Refresh transactions
+            setPage(0);
           }
         }
       } catch (err) {
@@ -408,11 +420,12 @@ const Transactions = () => {
           ? transaction.category_id.toString()
           : "",
         amount: transaction.amount.toString(),
-        description: transaction.description,
+        name: transaction.name,
+        description: transaction.description || "",
         transaction_date: new Date(transaction.transaction_date),
         type: transaction.type,
         status: transaction.status,
-        reference: transaction.reference || "",
+        reference_number: transaction.reference_number || "",
         notes: transaction.notes || "",
       });
       setOpenDialog(true);
@@ -800,9 +813,25 @@ const Transactions = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
+                  id="name"
+                  name="name"
+                  label="Name"
+                  value={formik.values.name}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={formik.touched.name && Boolean(formik.errors.name)}
+                  helperText={formik.touched.name && formik.errors.name}
+                  margin="normal"
+                  variant="outlined"
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
                   id="description"
                   name="description"
-                  label="Description"
+                  label="Description (Optional)"
                   value={formik.values.description}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
@@ -815,6 +844,8 @@ const Transactions = () => {
                   }
                   margin="normal"
                   variant="outlined"
+                  multiline
+                  rows={2}
                 />
               </Grid>
 
@@ -875,17 +906,19 @@ const Transactions = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  id="reference"
-                  name="reference"
+                  id="reference_number"
+                  name="reference_number"
                   label="Reference (Optional)"
-                  value={formik.values.reference}
+                  value={formik.values.reference_number}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   error={
-                    formik.touched.reference && Boolean(formik.errors.reference)
+                    formik.touched.reference_number &&
+                    Boolean(formik.errors.reference_number)
                   }
                   helperText={
-                    formik.touched.reference && formik.errors.reference
+                    formik.touched.reference_number &&
+                    formik.errors.reference_number
                   }
                   margin="normal"
                   variant="outlined"
@@ -1013,7 +1046,7 @@ const Transactions = () => {
       );
     }
 
-    if (transactions.length === 0) {
+    if (!transactions || transactions.length === 0) {
       return (
         <Card elevation={0} sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
           <MoneyIcon sx={{ fontSize: 60, color: "primary.light", mb: 2 }} />
@@ -1059,72 +1092,75 @@ const Transactions = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {transactions.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell>
-                    {formatDate(transaction.transaction_date)}
-                  </TableCell>
-                  <TableCell>{transaction.description}</TableCell>
-                  <TableCell>
-                    {transaction.category ? (
+              {Array.isArray(transactions) &&
+                transactions.map((transaction) => (
+                  <TableRow key={transaction.id}>
+                    <TableCell>
+                      {formatDate(transaction.transaction_date)}
+                    </TableCell>
+                    <TableCell>{transaction.name}</TableCell>
+                    <TableCell>
+                      {transaction.category ? (
+                        <Chip
+                          label={transaction.category.name}
+                          size="small"
+                          sx={{
+                            backgroundColor: `${transaction.category.color}20`,
+                            color: transaction.category.color,
+                          }}
+                        />
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          No Category
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {transaction.account?.name || "Unknown"}
+                    </TableCell>
+                    <TableCell>
                       <Chip
-                        label={transaction.category.name}
+                        label={
+                          transaction.status.charAt(0).toUpperCase() +
+                          transaction.status.slice(1)
+                        }
                         size="small"
-                        sx={{
-                          backgroundColor: `${transaction.category.color}20`,
-                          color: transaction.category.color,
-                        }}
+                        color={
+                          transaction.status === "completed"
+                            ? "success"
+                            : transaction.status === "pending"
+                            ? "warning"
+                            : "info"
+                        }
+                        variant="outlined"
                       />
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        No Category
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography
+                        variant="body2"
+                        color={
+                          transaction.type === "income"
+                            ? "success.main"
+                            : "error.main"
+                        }
+                        fontWeight="medium"
+                      >
+                        {transaction.type === "income" ? "+" : "-"}
+                        {formatCurrency(Math.abs(transaction.amount))}
                       </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>{transaction.account.name}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={
-                        transaction.status.charAt(0).toUpperCase() +
-                        transaction.status.slice(1)
-                      }
-                      size="small"
-                      color={
-                        transaction.status === "completed"
-                          ? "success"
-                          : transaction.status === "pending"
-                          ? "warning"
-                          : "info"
-                      }
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography
-                      variant="body2"
-                      color={
-                        transaction.type === "income"
-                          ? "success.main"
-                          : "error.main"
-                      }
-                      fontWeight="medium"
-                    >
-                      {transaction.type === "income" ? "+" : "-"}
-                      {formatCurrency(Math.abs(transaction.amount))}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      onClick={(e) =>
-                        handleTransactionMenuClick(e, transaction.id)
-                      }
-                    >
-                      <MoreVertIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell align="right">
+                      <IconButton
+                        size="small"
+                        onClick={(e) =>
+                          handleTransactionMenuClick(e, transaction.id)
+                        }
+                      >
+                        <MoreVertIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </TableContainer>

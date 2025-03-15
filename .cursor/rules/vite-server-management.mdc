@@ -1,0 +1,26 @@
+---
+description: Vite server no restarts
+globs: frontend/**/*.{js,jsx,ts,tsx,json,css,scss,html}
+alwaysApply: false
+---
+# Vite Server Management Rule
+
+<rule>
+name: vite_server_management
+description: Guidelines for managing the Vite development server in this project
+
+recommendations:
+  - Do not restart the Vite development server (npm run dev --prefix frontend)
+  - The user is running the Vite server in a separate terminal
+  - Frontend code changes will automatically be picked up by the running Vite server
+  - Focus on making code changes without restarting services
+
+actions:
+  - Instead of restarting the Vite server, inform the user that changes are automatically applied
+  - Recommend refreshing the browser if needed
+  - Avoid running npm commands that would start a new Vite instance
+
+metadata:
+  priority: high
+  version: 1.0
+</rule> 

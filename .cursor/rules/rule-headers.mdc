@@ -1,0 +1,63 @@
+---
+description: Rule Header Requirements
+globs: *.mdc
+alwaysApply: true
+---
+# Cursor Rule Header Format
+
+<rule>
+name: rule_header_format
+description: Standards for formatting headers in Cursor rule files
+
+recommendations:
+  - All rule files must have a properly formatted header section
+  - Headers must be enclosed between triple dashes (---)
+  - Required header fields: description, globs
+  - Optional header fields: alwaysApply (defaults to false)
+  - Headers must be at the very beginning of the file
+
+header_format:
+  required:
+    - description: A brief, clear description of what the rule does
+    - globs: File pattern(s) where this rule should apply (uses .gitignore syntax)
+  optional:
+    - alwaysApply: Boolean value (true/false) indicating if rule should be applied without explicit mention
+
+examples:
+  - good: |
+      ---
+      description: My Rule Description
+      globs: *.{js,ts,tsx}
+      alwaysApply: false
+      ---
+  - good: |
+      ---
+      description: Another Rule
+      globs: src/**/*.php
+      ---
+  - bad: |
+      # My Rule (missing header)
+      <rule>
+      name: bad_rule
+      ...
+  - bad: |
+      ---
+      description: Missing Required Fields
+      ---
+
+actions:
+  - type: enforce
+    message: |
+      All Cursor rule files must begin with a properly formatted header:
+      ```
+      ---
+      description: Brief description of the rule
+      globs: pattern/for/matching/files/**/*.{ext}
+      alwaysApply: false (optional)
+      ---
+      ```
+
+metadata:
+  priority: high
+  version: 1.0
+</rule> 

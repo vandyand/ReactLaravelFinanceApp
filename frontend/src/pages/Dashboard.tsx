@@ -68,7 +68,7 @@ interface DashboardData {
     id: number;
     amount: number;
     type: string;
-    description: string;
+    name: string;
     transaction_date: string;
     category: {
       name: string;
@@ -642,7 +642,7 @@ const Dashboard = () => {
                         <ListItemText
                           primary={
                             <Typography variant="subtitle2">
-                              {transaction.description || "Transaction"}
+                              {transaction.name || "Transaction"}
                             </Typography>
                           }
                           secondary={
@@ -655,21 +655,24 @@ const Dashboard = () => {
                                 {transaction.account.name} •{" "}
                                 {formatDate(transaction.transaction_date)}
                               </Typography>
-                              <br />
-                              {transaction.category && (
-                                <Chip
-                                  label={transaction.category.name}
-                                  size="small"
-                                  sx={{
-                                    mt: 1,
-                                    height: 20,
-                                    backgroundColor:
-                                      transaction.category.color + "20",
-                                    color: transaction.category.color,
-                                    fontSize: "0.7rem",
-                                  }}
-                                />
-                              )}
+                              <Box
+                                component="span"
+                                sx={{ display: "block", mt: 1 }}
+                              >
+                                {transaction.category && (
+                                  <Chip
+                                    label={transaction.category.name}
+                                    size="small"
+                                    sx={{
+                                      height: 20,
+                                      backgroundColor:
+                                        transaction.category.color + "20",
+                                      color: transaction.category.color,
+                                      fontSize: "0.7rem",
+                                    }}
+                                  />
+                                )}
+                              </Box>
                             </>
                           }
                         />

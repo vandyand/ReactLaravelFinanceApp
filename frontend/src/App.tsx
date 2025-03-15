@@ -6,12 +6,12 @@ import {
   Navigate,
 } from "react-router-dom";
 import { CssBaseline, ThemeProvider } from "@mui/material";
-import { Provider } from "react-redux";
+import { Provider, useSelector } from "react-redux";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 // Import store
-import { store } from "./store";
+import { store, RootState } from "./store";
 
 // Import theme
 import theme from "./theme";
@@ -19,6 +19,9 @@ import theme from "./theme";
 // Import components
 import Layout from "./components/Layout";
 import AuthGuard from "./components/AuthGuard";
+
+// Import services
+import sessionService from "./services/SessionService";
 
 // Import pages
 import Dashboard from "./pages/Dashboard";
@@ -32,11 +35,29 @@ import Categories from "./pages/Categories";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
-function App() {
-  useEffect(() => {
-    // Initialize any app-wide effects here
-  }, []);
+// Session monitoring component
+const SessionMonitor = () => {
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Start session monitoring when user is authenticated
+      sessionService.startMonitoring();
+    } else {
+      // Stop monitoring when user logs out
+      sessionService.stopMonitoring();
+    }
+
+    // Clean up on unmount
+    return () => {
+      sessionService.stopMonitoring();
+    };
+  }, [isAuthenticated]);
+
+  return null; // This component doesn't render anything
+};
+
+function App() {
   return (
     <Provider store={store}>
       <ThemeProvider theme={theme}>
@@ -53,6 +74,9 @@ function App() {
           pauseOnHover
         />
         <Router>
+          {/* Session monitor component */}
+          <SessionMonitor />
+
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />

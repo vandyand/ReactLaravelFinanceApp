@@ -168,25 +168,22 @@ const InvestmentList = ({
                 </Typography>
 
                 <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
-                  <Chip
-                    size="small"
-                    icon={
-                      investment.performance_percentage >= 0 ? (
-                        <GrowthIcon />
-                      ) : (
-                        <DeclineIcon />
-                      )
-                    }
-                    label={formatPercentage(investment.performance_percentage)}
+                  <Typography
+                    variant="body2"
+                    fontWeight="bold"
                     color={
-                      investment.performance_percentage >= 0
-                        ? "success"
-                        : "error"
+                      investment.profit_loss >= 0
+                        ? "success.main"
+                        : "error.main"
                     }
-                    sx={{ mr: 1 }}
-                  />
-                  <Typography variant="body2" color="text.secondary">
-                    {formatCurrency(investment.performance_value)} gain/loss
+                    sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                  >
+                    {investment.profit_loss >= 0 ? (
+                      <GrowthIcon fontSize="small" />
+                    ) : (
+                      <DeclineIcon fontSize="small" />
+                    )}
+                    {formatPercentage(investment.profit_loss_percentage)}
                   </Typography>
                 </Box>
               </Box>

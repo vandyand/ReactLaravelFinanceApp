@@ -14,6 +14,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  refreshTokenLastUpdated: number;
 }
 
 // Initial state
@@ -23,6 +24,7 @@ const initialState: AuthState = {
   isAuthenticated: !!localStorage.getItem("token"),
   isLoading: false,
   error: null,
+  refreshTokenLastUpdated: 0,
 };
 
 // Register user
@@ -124,13 +126,23 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.token = action.payload.token;
       state.isAuthenticated = true;
+      state.refreshTokenLastUpdated = Date.now();
       localStorage.setItem("token", action.payload.token);
     },
     clearCredentials: (state) => {
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
+      state.refreshTokenLastUpdated = 0;
       localStorage.removeItem("token");
+    },
+    setToken: (
+      state,
+      action: PayloadAction<{ token: string; refreshTokenLastUpdated: number }>
+    ) => {
+      state.token = action.payload.token;
+      state.refreshTokenLastUpdated = action.payload.refreshTokenLastUpdated;
+      localStorage.setItem("token", action.payload.token);
     },
   },
   extraReducers: (builder) => {
@@ -204,6 +216,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, setCredentials, clearCredentials } =
+export const { clearError, setCredentials, clearCredentials, setToken } =
   authSlice.actions;
 export default authSlice.reducer;

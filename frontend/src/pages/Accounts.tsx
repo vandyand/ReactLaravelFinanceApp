@@ -114,15 +114,38 @@ const Accounts = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(
     null
   );
+  const [accountToDelete, setAccountToDelete] = useState<number | null>(null);
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
   // Format currency
-  const formatCurrency = (amount: number, currency: string = "USD") => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-    }).format(amount);
+  const formatCurrency = (
+    amount: number | string,
+    currency: string = "USD"
+  ) => {
+    // Parse the amount if it's a string
+    let numericAmount: number;
+    if (typeof amount === "string") {
+      numericAmount = parseFloat(amount);
+    } else {
+      numericAmount = amount;
+    }
+
+    // Return a fallback if the amount is not a valid number
+    if (isNaN(numericAmount)) {
+      console.warn(`Invalid amount for formatting: ${amount}`);
+      return "$0.00"; // Default fallback
+    }
+
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: currency,
+      }).format(numericAmount);
+    } catch (error) {
+      console.error("Error formatting currency:", error);
+      return `$${numericAmount.toFixed(2)}`;
+    }
   };
 
   // Fetch accounts
@@ -136,7 +159,13 @@ const Accounts = () => {
         });
 
         if (response.data.success) {
-          setAccounts(response.data.data);
+          // Ensure all account balances are properly parsed as numbers
+          const parsedAccounts = response.data.data.map((account: any) => ({
+            ...account,
+            balance: parseFloat(account.balance),
+          }));
+
+          setAccounts(parsedAccounts);
         } else {
           setError("Failed to fetch accounts");
         }
@@ -155,7 +184,9 @@ const Accounts = () => {
   const validationSchema = Yup.object({
     name: Yup.string().required("Account name is required"),
     type: Yup.string().required("Account type is required"),
-    balance: Yup.number().required("Balance is required"),
+    balance: Yup.number()
+      .typeError("Balance must be a number")
+      .required("Balance is required"),
     currency: Yup.string().required("Currency is required"),
     institution: Yup.string().required("Institution name is required"),
     is_active: Yup.boolean(),
@@ -177,16 +208,42 @@ const Accounts = () => {
     onSubmit: async (values) => {
       setActionInProgress(true);
       try {
+        // Ensure balance is a valid number
+        let numericBalance;
+        try {
+          numericBalance = parseFloat(values.balance.toString());
+          if (isNaN(numericBalance)) {
+            throw new Error("Invalid balance value");
+          }
+        } catch (error) {
+          numericBalance = 0; // Fallback to 0 if parsing fails
+        }
+
+        const formattedValues = {
+          ...values,
+          balance: numericBalance,
+        };
+
         if (dialogMode === "add") {
           // Create new account
-          const response = await axios.post(`${API_URL}/accounts`, values, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+          const response = await axios.post(
+            `${API_URL}/accounts`,
+            formattedValues,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
 
           if (response.data.success) {
-            setAccounts([...accounts, response.data.data]);
+            // Ensure the new account has a properly parsed balance
+            const newAccount = {
+              ...response.data.data,
+              balance: parseFloat(response.data.data.balance),
+            };
+
+            setAccounts([...accounts, newAccount]);
             setSnackbar({
               open: true,
               message: "Account created successfully",
@@ -198,7 +255,7 @@ const Accounts = () => {
           // Update existing account
           const response = await axios.put(
             `${API_URL}/accounts/${currentAccount.id}`,
-            values,
+            formattedValues,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -207,9 +264,15 @@ const Accounts = () => {
           );
 
           if (response.data.success) {
+            // Ensure the updated account has a properly parsed balance
+            const updatedAccount = {
+              ...response.data.data,
+              balance: parseFloat(response.data.data.balance),
+            };
+
             setAccounts(
               accounts.map((account) =>
-                account.id === currentAccount.id ? response.data.data : account
+                account.id === currentAccount.id ? updatedAccount : account
               )
             );
             setSnackbar({
@@ -270,46 +333,57 @@ const Accounts = () => {
 
   // Handle delete account
   const handleDeleteConfirm = () => {
+    // Store the ID in our dedicated state before closing the menu
+    setAccountToDelete(selectedAccountId);
     handleAccountMenuClose();
     setConfirmDeleteDialog(true);
   };
 
   // Confirm delete account
   const confirmDelete = async () => {
-    if (!selectedAccountId) return;
+    const accountId = accountToDelete;
+
+    if (!accountId) {
+      return;
+    }
 
     setActionInProgress(true);
     try {
-      const response = await axios.delete(
-        `${API_URL}/accounts/${selectedAccountId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Add a small delay to ensure UI feedback is visible
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const response = await axios.delete(`${API_URL}/accounts/${accountId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (response.data.success) {
-        setAccounts(
-          accounts.filter((account) => account.id !== selectedAccountId)
-        );
+        setAccounts(accounts.filter((account) => account.id !== accountId));
         setSnackbar({
           open: true,
           message: "Account deleted successfully",
           severity: "success",
         });
+      } else {
+        setSnackbar({
+          open: true,
+          message:
+            "Failed to delete account: " +
+            (response.data.message || "Unknown error"),
+          severity: "error",
+        });
       }
     } catch (err) {
-      console.error("Error deleting account:", err);
       setSnackbar({
         open: true,
-        message: "Failed to delete account",
+        message: "Failed to delete account. Please try again.",
         severity: "error",
       });
     } finally {
       setConfirmDeleteDialog(false);
       setActionInProgress(false);
-      setSelectedAccountId(null);
+      setAccountToDelete(null);
     }
   };
 
@@ -328,13 +402,29 @@ const Accounts = () => {
   };
 
   // Calculate total balance
-  const totalBalance = accounts.reduce((sum, account) => {
-    // For credit cards, we typically subtract the balance
-    if (account.type === "credit_card") {
-      return sum - account.balance;
-    }
-    return sum + account.balance;
-  }, 0);
+  const calculateTotalBalance = () => {
+    let total = 0;
+
+    accounts.forEach((account) => {
+      // Skip if balance is not a valid number
+      if (isNaN(account.balance)) {
+        return;
+      }
+
+      const numericBalance = parseFloat(account.balance.toString());
+
+      if (account.type === "credit_card") {
+        total -= numericBalance;
+      } else {
+        total += numericBalance;
+      }
+    });
+
+    return total;
+  };
+
+  // Use the calculated total balance
+  const totalBalance = calculateTotalBalance();
 
   // Group accounts by type
   const accountsByType = accounts.reduce((acc, account) => {
@@ -345,6 +435,12 @@ const Accounts = () => {
     acc[type].push(account);
     return acc;
   }, {} as Record<AccountType, Account[]>);
+
+  // Handle view transactions for account
+  const handleViewTransactions = (accountId: number) => {
+    handleAccountMenuClose();
+    window.location.href = `/transactions?account_id=${accountId}`;
+  };
 
   if (loading) {
     return (
@@ -379,12 +475,19 @@ const Accounts = () => {
               <Typography variant="h6" color="text.secondary">
                 Total Balance
               </Typography>
-              <Typography variant="h3" fontWeight="bold" sx={{ mt: 1 }}>
-                {formatCurrency(totalBalance)}
+              <Typography variant="h5" fontWeight="bold" sx={{ mt: 1 }}>
+                {totalBalance !== 0
+                  ? formatCurrency(totalBalance)
+                  : accounts.length > 0
+                  ? "$0.00"
+                  : "No accounts"}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Across {accounts.length}{" "}
-                {accounts.length === 1 ? "account" : "accounts"}
+                {accounts.length > 0
+                  ? `Across ${accounts.length} ${
+                      accounts.length === 1 ? "account" : "accounts"
+                    }`
+                  : "Add your first account to get started"}
               </Typography>
             </Box>
             <Button
@@ -424,17 +527,25 @@ const Accounts = () => {
                 <Card
                   elevation={0}
                   sx={{
-                    borderRadius: 2,
                     height: "100%",
+                    borderRadius: 2,
                     position: "relative",
                     transition: "transform 0.2s, box-shadow 0.2s",
                     "&:hover": {
                       transform: "translateY(-4px)",
                       boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
                     },
+                    display: "flex",
+                    flexDirection: "column",
                   }}
                 >
-                  <CardContent>
+                  <CardContent
+                    sx={{
+                      flexGrow: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                    }}
+                  >
                     <Box
                       sx={{
                         display: "flex",
@@ -442,21 +553,34 @@ const Accounts = () => {
                         alignItems: "flex-start",
                       }}
                     >
-                      <Box>
-                        <Typography variant="h6" fontWeight="bold">
-                          {account.name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {account.institution}
-                        </Typography>
-                        {!account.is_active && (
-                          <Chip
-                            size="small"
-                            label="Inactive"
-                            color="default"
-                            sx={{ mt: 1, bgcolor: "rgba(0,0,0,0.08)" }}
-                          />
-                        )}
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <Avatar
+                          sx={{
+                            bgcolor: account.is_active
+                              ? "primary.light"
+                              : "action.disabledBackground",
+                          }}
+                        >
+                          {accountTypeIcons[account.type]}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="h6" fontWeight="bold">
+                            {account.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {account.institution}
+                          </Typography>
+                          {!account.is_active && (
+                            <Chip
+                              size="small"
+                              label="Inactive"
+                              color="default"
+                              sx={{ mt: 1, bgcolor: "rgba(0,0,0,0.08)" }}
+                            />
+                          )}
+                        </Box>
                       </Box>
                       <IconButton
                         aria-label="account settings"
@@ -466,7 +590,7 @@ const Accounts = () => {
                       </IconButton>
                     </Box>
 
-                    <Box sx={{ mt: 3 }}>
+                    <Box sx={{ mt: 3, mb: 1, flexGrow: 1 }}>
                       <Typography variant="body2" color="text.secondary">
                         Current Balance
                       </Typography>
@@ -477,25 +601,6 @@ const Accounts = () => {
                       >
                         {formatCurrency(account.balance, account.currency)}
                       </Typography>
-                    </Box>
-
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "flex-end",
-                        alignItems: "center",
-                        position: "absolute",
-                        bottom: 16,
-                        right: 16,
-                      }}
-                    >
-                      <Typography variant="body2" color="primary">
-                        View Transactions
-                      </Typography>
-                      <KeyboardArrowRightIcon
-                        color="primary"
-                        fontSize="small"
-                      />
                     </Box>
                   </CardContent>
                 </Card>
@@ -628,6 +733,9 @@ const Accounts = () => {
                   InputProps={{
                     startAdornment: formik.values.currency === "USD" ? "$" : "",
                   }}
+                  inputProps={{
+                    step: "0.01", // Allow decimal values with up to 2 decimal places
+                  }}
                 />
               </Grid>
 
@@ -721,7 +829,10 @@ const Accounts = () => {
       {/* Confirm Delete Dialog */}
       <Dialog
         open={confirmDeleteDialog}
-        onClose={() => setConfirmDeleteDialog(false)}
+        onClose={() => {
+          setConfirmDeleteDialog(false);
+          setAccountToDelete(null); // Clear the account to delete on dialog close
+        }}
       >
         <DialogTitle>Confirm Deletion</DialogTitle>
         <DialogContent>
@@ -730,19 +841,28 @@ const Accounts = () => {
             transactions will be kept, but will no longer be associated with
             this account.
           </Typography>
+          {accountToDelete && (
+            <Typography color="error" sx={{ mt: 2, fontWeight: "bold" }}>
+              {accounts.find((a) => a.id === accountToDelete)?.name ||
+                "Selected account"}
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={() => setConfirmDeleteDialog(false)}
+            onClick={() => {
+              setConfirmDeleteDialog(false);
+              setAccountToDelete(null);
+            }}
             disabled={actionInProgress}
           >
             Cancel
           </Button>
           <Button
-            onClick={confirmDelete}
+            onClick={() => confirmDelete()}
             color="error"
             variant="contained"
-            disabled={actionInProgress}
+            disabled={actionInProgress || !accountToDelete}
           >
             {actionInProgress ? (
               <CircularProgress size={24} color="inherit" />
@@ -759,6 +879,16 @@ const Accounts = () => {
         open={Boolean(anchorEl)}
         onClose={handleAccountMenuClose}
       >
+        <MenuItem
+          onClick={() =>
+            selectedAccountId && handleViewTransactions(selectedAccountId)
+          }
+        >
+          <ListItemIcon>
+            <KeyboardArrowRightIcon fontSize="small" />
+          </ListItemIcon>
+          View Transactions
+        </MenuItem>
         <MenuItem onClick={handleEditAccount}>
           <ListItemIcon>
             <EditIcon fontSize="small" />

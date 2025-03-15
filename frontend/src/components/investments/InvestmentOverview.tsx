@@ -59,18 +59,18 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
     investments.forEach((investment) => {
       totalValue += investment.current_value;
       totalPurchaseValue += investment.purchase_value;
-      totalGainLoss += investment.performance_value;
+      totalGainLoss += investment.profit_loss;
 
       // Track best and worst performing investments
       if (
-        investment.performance_percentage >
-        bestPerforming.performance_percentage
+        investment.profit_loss_percentage >
+        bestPerforming.profit_loss_percentage
       ) {
         bestPerforming = investment;
       }
       if (
-        investment.performance_percentage <
-        worstPerforming.performance_percentage
+        investment.profit_loss_percentage <
+        worstPerforming.profit_loss_percentage
       ) {
         worstPerforming = investment;
       }
@@ -169,7 +169,7 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
               {summary.bestPerforming && (
                 <Tooltip
                   title={`${summary.bestPerforming.name}: ${formatPercentage(
-                    summary.bestPerforming.performance_percentage
+                    summary.bestPerforming.profit_loss_percentage
                   )}`}
                 >
                   <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -182,7 +182,7 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
                       size="small"
                       icon={<GrowthIcon fontSize="small" />}
                       label={formatPercentage(
-                        summary.bestPerforming.performance_percentage
+                        summary.bestPerforming.profit_loss_percentage
                       )}
                       color="success"
                       sx={{ ml: 1 }}
@@ -202,7 +202,7 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
               {summary.worstPerforming && (
                 <Tooltip
                   title={`${summary.worstPerforming.name}: ${formatPercentage(
-                    summary.worstPerforming.performance_percentage
+                    summary.worstPerforming.profit_loss_percentage
                   )}`}
                 >
                   <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -215,7 +215,7 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
                       size="small"
                       icon={<DeclineIcon fontSize="small" />}
                       label={formatPercentage(
-                        summary.worstPerforming.performance_percentage
+                        summary.worstPerforming.profit_loss_percentage
                       )}
                       color="error"
                       sx={{ ml: 1 }}

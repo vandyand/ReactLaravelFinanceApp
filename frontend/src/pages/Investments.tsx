@@ -35,8 +35,13 @@ export interface Investment {
   symbol: string | null;
   units: number | null;
   notes: string | null;
-  performance_value: number;
-  performance_percentage: number;
+  profit_loss: number;
+  profit_loss_percentage: number;
+  annual_return: number;
+  account: {
+    id: number;
+    name: string;
+  };
   created_at: string;
   updated_at: string;
 }

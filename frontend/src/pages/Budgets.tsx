@@ -74,9 +74,9 @@ interface Budget {
   category_id: number | null;
   notes: string | null;
   is_active: boolean;
-  spend_amount: number;
-  remaining_amount: number;
-  percentage_used: number;
+  current_amount: number;
+  remaining: number;
+  percentage: number;
   created_at: string;
   updated_at: string;
   category: {
@@ -431,7 +431,7 @@ const Budgets = () => {
 
   // Get budget status color
   const getBudgetStatusInfo = (budget: Budget) => {
-    const percentUsed = budget.percentage_used;
+    const percentUsed = budget.percentage;
 
     if (percentUsed <= 50) {
       return {
@@ -449,7 +449,7 @@ const Budgets = () => {
       return {
         color: "error.main",
         icon: <DangerIcon />,
-        label: "At Risk",
+        label: "Warning",
       };
     } else {
       return {
@@ -901,7 +901,7 @@ const Budgets = () => {
                         Spent
                       </Typography>
                       <Typography variant="body1" fontWeight="medium">
-                        {formatCurrency(budget.spend_amount)}
+                        {formatCurrency(budget.current_amount)}
                       </Typography>
                     </Box>
                     <Box
@@ -919,23 +919,23 @@ const Budgets = () => {
                         variant="body1"
                         fontWeight="medium"
                         color={
-                          budget.remaining_amount >= 0
+                          budget.remaining >= 0
                             ? "success.main"
                             : "error.main"
                         }
                       >
-                        {formatCurrency(budget.remaining_amount)}
+                        {formatCurrency(budget.remaining)}
                       </Typography>
                     </Box>
 
                     <Box sx={{ mt: 2, mb: 1 }}>
                       <LinearProgress
                         variant="determinate"
-                        value={Math.min(budget.percentage_used, 100)}
+                        value={Math.min(budget.percentage, 100)}
                         color={
-                          budget.percentage_used <= 50
+                          budget.percentage <= 50
                             ? "success"
-                            : budget.percentage_used <= 75
+                            : budget.percentage <= 75
                             ? "warning"
                             : "error"
                         }
@@ -961,7 +961,7 @@ const Budgets = () => {
                         variant="outlined"
                       />
                       <Typography variant="body2">
-                        {budget.percentage_used.toFixed(0)}% used
+                        {budget.percentage.toFixed(0)}% used
                       </Typography>
                     </Box>
 
