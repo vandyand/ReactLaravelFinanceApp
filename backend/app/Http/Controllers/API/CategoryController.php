@@ -4,6 +4,9 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Category;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class CategoryController extends Controller
 {
@@ -12,7 +15,16 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        //
+        $user = Auth::user();
+        $categories = Category::where('user_id', $user->id)
+            ->orWhereNull('user_id')  // Include system default categories
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $categories
+        ]);
     }
 
     /**
@@ -20,7 +32,32 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'type' => 'required|string|in:income,expense,transfer',
+            'color' => 'nullable|string|max:7',
+            'icon' => 'nullable|string|max:50',
+            'description' => 'nullable|string',
+            'parent_id' => 'nullable|exists:categories,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = Auth::user();
+        $category = new Category($request->all());
+        $category->user_id = $user->id;
+        $category->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Category created successfully',
+            'data' => $category
+        ], 201);
     }
 
     /**
@@ -28,7 +65,24 @@ class CategoryController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $user = Auth::user();
+        $category = Category::where(function ($query) use ($user) {
+            $query->where('user_id', $user->id)
+                ->orWhereNull('user_id');
+        })
+            ->find($id);
+
+        if (!$category) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Category not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $category
+        ]);
     }
 
     /**
@@ -36,7 +90,39 @@ class CategoryController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $user = Auth::user();
+        $category = Category::where('user_id', $user->id)->find($id);
+
+        if (!$category) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Category not found or you do not have permission to edit this category'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'string|max:255',
+            'type' => 'string|in:income,expense,transfer',
+            'color' => 'nullable|string|max:7',
+            'icon' => 'nullable|string|max:50',
+            'description' => 'nullable|string',
+            'parent_id' => 'nullable|exists:categories,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $category->update($request->all());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Category updated successfully',
+            'data' => $category
+        ]);
     }
 
     /**
@@ -44,6 +130,37 @@ class CategoryController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $user = Auth::user();
+        $category = Category::where('user_id', $user->id)->find($id);
+
+        if (!$category) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Category not found or you do not have permission to delete this category'
+            ], 404);
+        }
+
+        // Check if category has transactions
+        if ($category->transactions()->count() > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete category with associated transactions'
+            ], 400);
+        }
+
+        // Check if category has budgets
+        if ($category->budgets()->count() > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete category with associated budgets'
+            ], 400);
+        }
+
+        $category->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Category deleted successfully'
+        ]);
     }
 }
