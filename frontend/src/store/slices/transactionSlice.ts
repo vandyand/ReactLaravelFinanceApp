@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import axios from "axios";
+import api from "../../services/api";
 
 // Define types
 export interface Transaction {
@@ -41,9 +41,6 @@ const initialState: TransactionsState = {
   error: null,
 };
 
-// Define API URL
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
-
 // Fetch transactions
 export const fetchTransactions = createAsyncThunk(
   "transactions/fetchTransactions",
@@ -58,11 +55,9 @@ export const fetchTransactions = createAsyncThunk(
       date_from?: string;
       date_to?: string;
     },
-    { getState, rejectWithValue }
+    { rejectWithValue }
   ) => {
     try {
-      const state = getState() as { auth: { token: string } };
-
       // Prepare query parameters
       const queryParams = new URLSearchParams();
       if (params.page) queryParams.append("page", params.page.toString());
@@ -76,14 +71,7 @@ export const fetchTransactions = createAsyncThunk(
       if (params.date_from) queryParams.append("date_from", params.date_from);
       if (params.date_to) queryParams.append("date_to", params.date_to);
 
-      const response = await axios.get(
-        `${API_URL}/transactions?${queryParams.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${state.auth.token}`,
-          },
-        }
-      );
+      const response = await api.get(`/transactions?${queryParams.toString()}`);
 
       if (response.data.success) {
         return {
@@ -107,21 +95,9 @@ export const fetchTransactions = createAsyncThunk(
 // Create transaction
 export const createTransaction = createAsyncThunk(
   "transactions/createTransaction",
-  async (
-    transactionData: Partial<Transaction>,
-    { getState, rejectWithValue }
-  ) => {
+  async (transactionData: Partial<Transaction>, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { token: string } };
-      const response = await axios.post(
-        `${API_URL}/transactions`,
-        transactionData,
-        {
-          headers: {
-            Authorization: `Bearer ${state.auth.token}`,
-          },
-        }
-      );
+      const response = await api.post(`/transactions`, transactionData);
 
       if (response.data.success) {
         return response.data.data;
@@ -144,19 +120,10 @@ export const updateTransaction = createAsyncThunk(
   "transactions/updateTransaction",
   async (
     { id, ...transactionData }: Partial<Transaction> & { id: number },
-    { getState, rejectWithValue }
+    { rejectWithValue }
   ) => {
     try {
-      const state = getState() as { auth: { token: string } };
-      const response = await axios.put(
-        `${API_URL}/transactions/${id}`,
-        transactionData,
-        {
-          headers: {
-            Authorization: `Bearer ${state.auth.token}`,
-          },
-        }
-      );
+      const response = await api.put(`/transactions/${id}`, transactionData);
 
       if (response.data.success) {
         return response.data.data;
@@ -177,14 +144,9 @@ export const updateTransaction = createAsyncThunk(
 // Delete transaction
 export const deleteTransaction = createAsyncThunk(
   "transactions/deleteTransaction",
-  async (id: number, { getState, rejectWithValue }) => {
+  async (id: number, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { token: string } };
-      const response = await axios.delete(`${API_URL}/transactions/${id}`, {
-        headers: {
-          Authorization: `Bearer ${state.auth.token}`,
-        },
-      });
+      const response = await api.delete(`/transactions/${id}`);
 
       if (response.data.success) {
         return id;

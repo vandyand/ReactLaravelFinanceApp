@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import axios from "axios";
+import api from "../../services/api";
 
 // Define types
 export interface Investment {
@@ -31,20 +31,12 @@ const initialState: InvestmentsState = {
   error: null,
 };
 
-// Define API URL
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
-
 // Fetch investments
 export const fetchInvestments = createAsyncThunk(
   "investments/fetchInvestments",
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { token: string } };
-      const response = await axios.get(`${API_URL}/investments`, {
-        headers: {
-          Authorization: `Bearer ${state.auth.token}`,
-        },
-      });
+      const response = await api.get(`/investments`);
 
       if (response.data.success) {
         return response.data.data;
@@ -65,21 +57,9 @@ export const fetchInvestments = createAsyncThunk(
 // Create investment
 export const createInvestment = createAsyncThunk(
   "investments/createInvestment",
-  async (
-    investmentData: Partial<Investment>,
-    { getState, rejectWithValue }
-  ) => {
+  async (investmentData: Partial<Investment>, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { token: string } };
-      const response = await axios.post(
-        `${API_URL}/investments`,
-        investmentData,
-        {
-          headers: {
-            Authorization: `Bearer ${state.auth.token}`,
-          },
-        }
-      );
+      const response = await api.post(`/investments`, investmentData);
 
       if (response.data.success) {
         return response.data.data;
@@ -102,19 +82,10 @@ export const updateInvestment = createAsyncThunk(
   "investments/updateInvestment",
   async (
     { id, ...investmentData }: Partial<Investment> & { id: number },
-    { getState, rejectWithValue }
+    { rejectWithValue }
   ) => {
     try {
-      const state = getState() as { auth: { token: string } };
-      const response = await axios.put(
-        `${API_URL}/investments/${id}`,
-        investmentData,
-        {
-          headers: {
-            Authorization: `Bearer ${state.auth.token}`,
-          },
-        }
-      );
+      const response = await api.put(`/investments/${id}`, investmentData);
 
       if (response.data.success) {
         return response.data.data;
@@ -135,14 +106,9 @@ export const updateInvestment = createAsyncThunk(
 // Delete investment
 export const deleteInvestment = createAsyncThunk(
   "investments/deleteInvestment",
-  async (id: number, { getState, rejectWithValue }) => {
+  async (id: number, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { token: string } };
-      const response = await axios.delete(`${API_URL}/investments/${id}`, {
-        headers: {
-          Authorization: `Bearer ${state.auth.token}`,
-        },
-      });
+      const response = await api.delete(`/investments/${id}`);
 
       if (response.data.success) {
         return id;
