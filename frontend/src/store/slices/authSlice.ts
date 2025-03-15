@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import axios from "axios";
+import api from "../../services/api";
 
 // Define types
 export interface User {
@@ -25,9 +25,6 @@ const initialState: AuthState = {
   error: null,
 };
 
-// Define API URL
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
-
 // Register user
 export const register = createAsyncThunk(
   "auth/register",
@@ -41,7 +38,7 @@ export const register = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await axios.post(`${API_URL}/register`, userData);
+      const response = await api.post(`/register`, userData);
       return response.data;
     } catch (error: any) {
       // Enhanced error handling
@@ -67,7 +64,7 @@ export const login = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await axios.post(`${API_URL}/login`, userData);
+      const response = await api.post(`/login`, userData);
 
       if (response.data.success) {
         localStorage.setItem("token", response.data.access_token);
@@ -84,15 +81,9 @@ export const login = createAsyncThunk(
 // Get user data
 export const getCurrentUser = createAsyncThunk(
   "auth/getCurrentUser",
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: AuthState };
-      const response = await axios.get(`${API_URL}/me`, {
-        headers: {
-          Authorization: `Bearer ${state.auth.token}`,
-        },
-      });
-
+      const response = await api.get(`/me`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -105,19 +96,9 @@ export const getCurrentUser = createAsyncThunk(
 // Logout user
 export const logout = createAsyncThunk(
   "auth/logout",
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: AuthState };
-      await axios.post(
-        `${API_URL}/logout`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${state.auth.token}`,
-          },
-        }
-      );
-
+      await api.post(`/logout`, {});
       localStorage.removeItem("token");
       return { message: "Logged out successfully" };
     } catch (error: any) {

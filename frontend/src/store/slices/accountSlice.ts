@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import axios from "axios";
+import api from "../../services/api";
 
 // Define types
 export interface Account {
@@ -27,20 +27,12 @@ const initialState: AccountsState = {
   error: null,
 };
 
-// Define API URL
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
-
 // Fetch accounts
 export const fetchAccounts = createAsyncThunk(
   "accounts/fetchAccounts",
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { token: string } };
-      const response = await axios.get(`${API_URL}/accounts`, {
-        headers: {
-          Authorization: `Bearer ${state.auth.token}`,
-        },
-      });
+      const response = await api.get(`/accounts`);
 
       if (response.data.success) {
         return response.data.data;
@@ -61,14 +53,9 @@ export const fetchAccounts = createAsyncThunk(
 // Create account
 export const createAccount = createAsyncThunk(
   "accounts/createAccount",
-  async (accountData: Partial<Account>, { getState, rejectWithValue }) => {
+  async (accountData: Partial<Account>, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { token: string } };
-      const response = await axios.post(`${API_URL}/accounts`, accountData, {
-        headers: {
-          Authorization: `Bearer ${state.auth.token}`,
-        },
-      });
+      const response = await api.post(`/accounts`, accountData);
 
       if (response.data.success) {
         return response.data.data;
@@ -91,19 +78,10 @@ export const updateAccount = createAsyncThunk(
   "accounts/updateAccount",
   async (
     { id, ...accountData }: Partial<Account> & { id: number },
-    { getState, rejectWithValue }
+    { rejectWithValue }
   ) => {
     try {
-      const state = getState() as { auth: { token: string } };
-      const response = await axios.put(
-        `${API_URL}/accounts/${id}`,
-        accountData,
-        {
-          headers: {
-            Authorization: `Bearer ${state.auth.token}`,
-          },
-        }
-      );
+      const response = await api.put(`/accounts/${id}`, accountData);
 
       if (response.data.success) {
         return response.data.data;
@@ -124,14 +102,9 @@ export const updateAccount = createAsyncThunk(
 // Delete account
 export const deleteAccount = createAsyncThunk(
   "accounts/deleteAccount",
-  async (id: number, { getState, rejectWithValue }) => {
+  async (id: number, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: { token: string } };
-      const response = await axios.delete(`${API_URL}/accounts/${id}`, {
-        headers: {
-          Authorization: `Bearer ${state.auth.token}`,
-        },
-      });
+      const response = await api.delete(`/accounts/${id}`);
 
       if (response.data.success) {
         return id;

@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { CircularProgress, Box } from "@mui/material";
+import { toast } from "react-toastify";
 
 import { RootState } from "../store";
 import { getCurrentUser } from "../store/slices/authSlice";
 import { AppDispatch } from "../store";
+import { isTokenExpired } from "../services/api";
 
 const AuthGuard = () => {
   const [isVerifying, setIsVerifying] = useState(true);
@@ -18,6 +20,14 @@ const AuthGuard = () => {
   useEffect(() => {
     const verifyAuth = async () => {
       if (token) {
+        // Check if token is expired
+        if (isTokenExpired()) {
+          toast.error("Your session has expired. Please log in again.");
+          localStorage.removeItem("token");
+          setIsVerifying(false);
+          return;
+        }
+
         try {
           await dispatch(getCurrentUser()).unwrap();
         } catch (error) {

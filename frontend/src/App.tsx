@@ -7,6 +7,8 @@ import {
 } from "react-router-dom";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { Provider } from "react-redux";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // Import store
 import { store } from "./store";
@@ -39,6 +41,17 @@ function App() {
     <Provider store={store}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+        />
         <Router>
           <Routes>
             {/* Public routes */}
