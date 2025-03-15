@@ -44,17 +44,102 @@ const InvestmentList = ({
     number | null
   >(null);
 
+  // Format investment type for display
+  const formatInvestmentType = (type: string): string => {
+    if (!type) return "";
+
+    // Handle specific cases
+    const typeMap: Record<string, string> = {
+      mutual_fund: "Mutual Fund",
+      etf: "ETF",
+      stock: "Stock",
+      cryptocurrency: "Cryptocurrency",
+      bond: "Bond",
+      real_estate: "Real Estate",
+    };
+
+    if (typeMap[type.toLowerCase()]) {
+      return typeMap[type.toLowerCase()];
+    }
+
+    // For other types, capitalize each word
+    return type
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  };
+
+  // Calculate purchase value (since it's not provided by the API)
+  const calculatePurchaseValue = (investment: Investment): number => {
+    if (!investment.purchase_price || !investment.quantity) return 0;
+
+    // Convert strings to numbers if needed
+    const price =
+      typeof investment.purchase_price === "string"
+        ? parseFloat(investment.purchase_price)
+        : investment.purchase_price;
+
+    const qty =
+      typeof investment.quantity === "string"
+        ? parseFloat(investment.quantity)
+        : investment.quantity;
+
+    if (isNaN(price) || isNaN(qty)) return 0;
+
+    return price * qty;
+  };
+
   // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
+  const formatCurrency = (amount: number | string | null | undefined) => {
+    // Return a fallback if the amount is not valid
+    if (amount === null || amount === undefined) {
+      return "$0.00";
+    }
+
+    // Parse the amount if it's a string
+    let numericAmount: number;
+    if (typeof amount === "string") {
+      numericAmount = parseFloat(amount);
+    } else {
+      numericAmount = amount;
+    }
+
+    // Return a fallback if the amount is not a valid number
+    if (isNaN(numericAmount)) {
+      return "$0.00";
+    }
+
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(numericAmount);
+    } catch (error) {
+      console.error("Error formatting currency:", error);
+      return `$${numericAmount.toFixed(2)}`;
+    }
   };
 
   // Format percentage
-  const formatPercentage = (value: number) => {
-    return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+  const formatPercentage = (value: number | string | null | undefined) => {
+    if (value === null || value === undefined) {
+      return "+0.00%";
+    }
+
+    // Parse the value if it's a string
+    let numericValue: number;
+    if (typeof value === "string") {
+      numericValue = parseFloat(value);
+    } else {
+      numericValue = value;
+    }
+
+    // Handle NaN
+    if (isNaN(numericValue)) {
+      return "+0.00%";
+    }
+
+    return `${numericValue >= 0 ? "+" : ""}${numericValue.toFixed(2)}%`;
   };
 
   // Handle investment menu click
@@ -146,7 +231,7 @@ const InvestmentList = ({
                   </Typography>
                   <Chip
                     size="small"
-                    label={investment.type}
+                    label={formatInvestmentType(investment.type)}
                     color="primary"
                     variant="outlined"
                   />
@@ -172,13 +257,15 @@ const InvestmentList = ({
                     variant="body2"
                     fontWeight="bold"
                     color={
-                      investment.profit_loss >= 0
+                      !isNaN(investment.profit_loss_percentage) &&
+                      investment.profit_loss_percentage >= 0
                         ? "success.main"
                         : "error.main"
                     }
                     sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
                   >
-                    {investment.profit_loss >= 0 ? (
+                    {!isNaN(investment.profit_loss_percentage) &&
+                    investment.profit_loss_percentage >= 0 ? (
                       <GrowthIcon fontSize="small" />
                     ) : (
                       <DeclineIcon fontSize="small" />
@@ -190,13 +277,25 @@ const InvestmentList = ({
 
               <Box>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Purchase Value: {formatCurrency(investment.purchase_value)}
+                  Purchase Value:{" "}
+                  {formatCurrency(calculatePurchaseValue(investment))}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {investment.symbol && `Symbol: ${investment.symbol}`}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {investment.units && `Units: ${investment.units}`}
+                  {investment.units !== null &&
+                  investment.units !== undefined &&
+                  !isNaN(Number(investment.units))
+                    ? `Units: ${Number(investment.units).toFixed(
+                        investment.type === "cryptocurrency" ? 6 : 2
+                      )}`
+                    : investment.quantity !== null &&
+                      investment.quantity !== undefined &&
+                      !isNaN(Number(investment.quantity)) &&
+                      `Units: ${Number(investment.quantity).toFixed(
+                        investment.type === "cryptocurrency" ? 6 : 2
+                      )}`}
                 </Typography>
               </Box>
             </Card>

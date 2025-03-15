@@ -29,18 +29,46 @@ interface InvestmentFormProps {
   actionInProgress: boolean;
 }
 
-// Investment types
+// Investment types in API format
 const investmentTypes = [
-  "Stocks",
-  "Bonds",
-  "ETFs",
-  "Mutual Funds",
-  "Real Estate",
-  "Cryptocurrency",
-  "Commodities",
-  "Retirement",
-  "Other",
+  "stock",
+  "bond",
+  "etf",
+  "mutual_fund",
+  "real_estate",
+  "cryptocurrency",
+  "commodity",
+  "retirement",
+  "other",
 ];
+
+// Function to format investment type for display
+const formatInvestmentType = (type: string): string => {
+  if (!type) return "";
+
+  // Handle specific cases
+  const typeMap: Record<string, string> = {
+    mutual_fund: "Mutual Fund",
+    etf: "ETF",
+    stock: "Stock",
+    cryptocurrency: "Cryptocurrency",
+    bond: "Bond",
+    real_estate: "Real Estate",
+    commodity: "Commodity",
+    retirement: "Retirement",
+    other: "Other",
+  };
+
+  if (typeMap[type.toLowerCase()]) {
+    return typeMap[type.toLowerCase()];
+  }
+
+  // For other types, capitalize each word
+  return type
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
 
 const InvestmentForm = ({
   open,
@@ -54,20 +82,20 @@ const InvestmentForm = ({
   const validationSchema = Yup.object({
     name: Yup.string().required("Investment name is required"),
     type: Yup.string().required("Investment type is required"),
-    purchase_value: Yup.number()
-      .required("Purchase value is required")
-      .moreThan(0, "Value must be greater than 0"),
-    current_value: Yup.number()
-      .required("Current value is required")
-      .moreThan(0, "Value must be greater than 0"),
+    purchase_price: Yup.number()
+      .required("Purchase price is required")
+      .moreThan(0, "Price must be greater than 0"),
+    current_price: Yup.number()
+      .required("Current price is required")
+      .moreThan(0, "Price must be greater than 0"),
     purchase_date: Yup.date().required("Purchase date is required"),
     symbol: Yup.string().nullable(),
-    units: Yup.number()
+    quantity: Yup.number()
       .nullable()
       .transform((value) => (isNaN(value) ? null : value))
       .test(
         "is-positive",
-        "Units must be greater than 0",
+        "Quantity must be greater than 0",
         (value) => value === null || value > 0
       ),
     notes: Yup.string().nullable(),
@@ -77,14 +105,23 @@ const InvestmentForm = ({
   const formik = useFormik({
     initialValues: {
       name: currentInvestment?.name || "",
-      type: currentInvestment?.type || "Stocks",
-      purchase_value: currentInvestment?.purchase_value.toString() || "",
-      current_value: currentInvestment?.current_value.toString() || "",
+      type: currentInvestment?.type || "stock", // Default to stock instead of Stocks
+      purchase_price:
+        currentInvestment?.purchase_price !== undefined
+          ? currentInvestment.purchase_price.toString()
+          : "",
+      current_price:
+        currentInvestment?.current_price !== undefined
+          ? currentInvestment.current_price.toString()
+          : "",
       purchase_date: currentInvestment?.purchase_date
         ? new Date(currentInvestment.purchase_date)
         : new Date(),
       symbol: currentInvestment?.symbol || "",
-      units: currentInvestment?.units?.toString() || "",
+      quantity:
+        currentInvestment?.quantity !== undefined
+          ? currentInvestment.quantity.toString()
+          : "",
       notes: currentInvestment?.notes || "",
     },
     validationSchema: validationSchema,
@@ -131,7 +168,7 @@ const InvestmentForm = ({
                 >
                   {investmentTypes.map((type) => (
                     <MenuItem key={type} value={type}>
-                      {type}
+                      {formatInvestmentType(type)}
                     </MenuItem>
                   ))}
                 </Select>
@@ -141,19 +178,19 @@ const InvestmentForm = ({
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                id="purchase_value"
-                name="purchase_value"
-                label="Purchase Value"
+                id="purchase_price"
+                name="purchase_price"
+                label="Purchase Price"
                 type="number"
-                value={formik.values.purchase_value}
+                value={formik.values.purchase_price}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 error={
-                  formik.touched.purchase_value &&
-                  Boolean(formik.errors.purchase_value)
+                  formik.touched.purchase_price &&
+                  Boolean(formik.errors.purchase_price)
                 }
                 helperText={
-                  formik.touched.purchase_value && formik.errors.purchase_value
+                  formik.touched.purchase_price && formik.errors.purchase_price
                 }
                 margin="normal"
                 variant="outlined"
@@ -168,19 +205,19 @@ const InvestmentForm = ({
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                id="current_value"
-                name="current_value"
-                label="Current Value"
+                id="current_price"
+                name="current_price"
+                label="Current Price"
                 type="number"
-                value={formik.values.current_value}
+                value={formik.values.current_price}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 error={
-                  formik.touched.current_value &&
-                  Boolean(formik.errors.current_value)
+                  formik.touched.current_price &&
+                  Boolean(formik.errors.current_price)
                 }
                 helperText={
-                  formik.touched.current_value && formik.errors.current_value
+                  formik.touched.current_price && formik.errors.current_price
                 }
                 margin="normal"
                 variant="outlined"
@@ -236,15 +273,17 @@ const InvestmentForm = ({
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                id="units"
-                name="units"
-                label="Units/Shares (Optional)"
+                id="quantity"
+                name="quantity"
+                label="Quantity/Shares"
                 type="number"
-                value={formik.values.units}
+                value={formik.values.quantity}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                error={formik.touched.units && Boolean(formik.errors.units)}
-                helperText={formik.touched.units && formik.errors.units}
+                error={
+                  formik.touched.quantity && Boolean(formik.errors.quantity)
+                }
+                helperText={formik.touched.quantity && formik.errors.quantity}
                 margin="normal"
                 variant="outlined"
               />

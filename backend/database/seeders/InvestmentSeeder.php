@@ -366,7 +366,7 @@ class InvestmentSeeder extends Seeder
     }
 
     /**
-     * Create a single investment record
+     * Create an investment based on the provided data
      */
     private function createInvestment($user, $account, $investmentData)
     {
@@ -392,6 +392,10 @@ class InvestmentSeeder extends Seeder
             $investmentData['quantity_range'][0],
             $investmentData['quantity_range'][1]
         );
+
+        // Calculate purchase_value and current_value (price * quantity)
+        $purchaseValue = $purchasePrice * $quantity;
+        $currentValue = $currentPrice * $quantity;
 
         // Create the investment
         Investment::create([
@@ -422,6 +426,10 @@ class InvestmentSeeder extends Seeder
 
             // Add some randomness to sell price
             $sellPrice = $sellPrice * (0.9 + (fake()->randomFloat(2, 0, 0.2)));
+
+            // Calculate purchase_value and sell_value for the sold portion
+            $sellPurchaseValue = $purchasePrice * $sellQuantity;
+            $sellValue = $sellPrice * $sellQuantity;
 
             Investment::create([
                 'user_id' => $user->id,

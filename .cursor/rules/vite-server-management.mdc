@@ -1,8 +1,9 @@
 ---
-description: Vite server no restarts
-globs: frontend/**/*.{js,jsx,ts,tsx,json,css,scss,html}
-alwaysApply: false
+description: Guidelines for managing the Vite development server in this project
+globs: frontend/**/*.{js,jsx,ts,tsx,css,scss,sass,html}
+alwaysApply: true
 ---
+
 # Vite Server Management Rule
 
 <rule>

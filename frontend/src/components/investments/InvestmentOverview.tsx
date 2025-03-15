@@ -18,6 +18,34 @@ interface InvestmentOverviewProps {
   investments: Investment[];
 }
 
+// Function to format investment type for display
+const formatInvestmentType = (type: string): string => {
+  if (!type) return "";
+
+  // Handle specific cases
+  const typeMap: Record<string, string> = {
+    mutual_fund: "Mutual Fund",
+    etf: "ETF",
+    stock: "Stock",
+    cryptocurrency: "Cryptocurrency",
+    bond: "Bond",
+    real_estate: "Real Estate",
+    commodity: "Commodity",
+    retirement: "Retirement",
+    other: "Other",
+  };
+
+  if (typeMap[type.toLowerCase()]) {
+    return typeMap[type.toLowerCase()];
+  }
+
+  // For other types, capitalize each word
+  return type
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
 const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
   const [summary, setSummary] = useState({
     totalInvestments: 0,
@@ -42,6 +70,26 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
     return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
   };
 
+  // Calculate purchase value for an investment
+  const calculatePurchaseValue = (investment: Investment): number => {
+    if (!investment.purchase_price || !investment.quantity) return 0;
+
+    // Convert strings to numbers if needed
+    const price =
+      typeof investment.purchase_price === "string"
+        ? parseFloat(investment.purchase_price)
+        : investment.purchase_price;
+
+    const qty =
+      typeof investment.quantity === "string"
+        ? parseFloat(investment.quantity)
+        : investment.quantity;
+
+    if (isNaN(price) || isNaN(qty)) return 0;
+
+    return price * qty;
+  };
+
   // Calculate summary metrics
   useEffect(() => {
     if (investments.length === 0) {
@@ -57,9 +105,20 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
       {};
 
     investments.forEach((investment) => {
-      totalValue += investment.current_value;
-      totalPurchaseValue += investment.purchase_value;
-      totalGainLoss += investment.profit_loss;
+      // Calculate current value (ensure it's a number)
+      const currentValue =
+        typeof investment.current_value === "number"
+          ? investment.current_value
+          : 0;
+
+      // Calculate purchase value using our helper function
+      const purchaseValue =
+        investment.purchase_value || calculatePurchaseValue(investment);
+
+      // Update totals
+      totalValue += currentValue;
+      totalPurchaseValue += purchaseValue;
+      totalGainLoss += currentValue - purchaseValue;
 
       // Track best and worst performing investments
       if (
@@ -83,7 +142,7 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
         };
       }
       investmentsByType[investment.type].count += 1;
-      investmentsByType[investment.type].value += investment.current_value;
+      investmentsByType[investment.type].value += currentValue;
     });
 
     // Calculate overall percentage return
@@ -91,6 +150,13 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
       totalPurchaseValue > 0
         ? ((totalValue - totalPurchaseValue) / totalPurchaseValue) * 100
         : 0;
+
+    console.log("Portfolio metrics:", {
+      totalValue,
+      totalPurchaseValue,
+      totalGainLoss,
+      percentageReturn,
+    });
 
     setSummary({
       totalInvestments: investments.length,
@@ -117,29 +183,46 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
         <Grid container spacing={3} sx={{ mt: 1 }}>
           {/* Total Value */}
           <Grid item xs={12} sm={6} md={3}>
-            <Box>
+            <Card
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "background.default",
+                height: "100%",
+              }}
+            >
               <Typography variant="body2" color="text.secondary">
                 Total Value
               </Typography>
               <Typography variant="h5" fontWeight="bold">
                 {formatCurrency(summary.totalValue)}
               </Typography>
-            </Box>
+            </Card>
           </Grid>
 
           {/* Total Gain/Loss */}
           <Grid item xs={12} sm={6} md={3}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
+            <Card
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "background.default",
+                height: "100%",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" gutterBottom>
                 Total Gain/Loss
               </Typography>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Box>
                 <Typography
                   variant="h5"
                   fontWeight="bold"
                   color={
                     summary.totalGainLoss >= 0 ? "success.main" : "error.main"
                   }
+                  sx={{ mb: 0.5 }}
                 >
                   {formatCurrency(summary.totalGainLoss)}
                 </Typography>
@@ -154,16 +237,23 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
                   }
                   label={formatPercentage(summary.percentageReturn)}
                   color={summary.percentageReturn >= 0 ? "success" : "error"}
-                  sx={{ ml: 1 }}
                 />
               </Box>
-            </Box>
+            </Card>
           </Grid>
 
           {/* Best Performer */}
           <Grid item xs={12} sm={6} md={3}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
+            <Card
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "background.default",
+                height: "100%",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" gutterBottom>
                 Best Performer
               </Typography>
               {summary.bestPerforming && (
@@ -172,11 +262,22 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
                     summary.bestPerforming.profit_loss_percentage
                   )}`}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <Typography variant="h5" fontWeight="bold">
-                      {summary.bestPerforming.name.length > 10
-                        ? `${summary.bestPerforming.name.substring(0, 10)}...`
-                        : summary.bestPerforming.name}
+                  <Box>
+                    <Typography
+                      variant="body1"
+                      fontWeight="bold"
+                      sx={{
+                        wordBreak: "break-word",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        lineHeight: 1.2,
+                        mb: 0.5,
+                        height: "2.4em",
+                      }}
+                    >
+                      {summary.bestPerforming.name}
                     </Typography>
                     <Chip
                       size="small"
@@ -185,18 +286,25 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
                         summary.bestPerforming.profit_loss_percentage
                       )}
                       color="success"
-                      sx={{ ml: 1 }}
                     />
                   </Box>
                 </Tooltip>
               )}
-            </Box>
+            </Card>
           </Grid>
 
           {/* Worst Performer */}
           <Grid item xs={12} sm={6} md={3}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
+            <Card
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "background.default",
+                height: "100%",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" gutterBottom>
                 Worst Performer
               </Typography>
               {summary.worstPerforming && (
@@ -205,11 +313,22 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
                     summary.worstPerforming.profit_loss_percentage
                   )}`}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <Typography variant="h5" fontWeight="bold">
-                      {summary.worstPerforming.name.length > 10
-                        ? `${summary.worstPerforming.name.substring(0, 10)}...`
-                        : summary.worstPerforming.name}
+                  <Box>
+                    <Typography
+                      variant="body1"
+                      fontWeight="bold"
+                      sx={{
+                        wordBreak: "break-word",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        lineHeight: 1.2,
+                        mb: 0.5,
+                        height: "2.4em",
+                      }}
+                    >
+                      {summary.worstPerforming.name}
                     </Typography>
                     <Chip
                       size="small"
@@ -218,12 +337,11 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
                         summary.worstPerforming.profit_loss_percentage
                       )}
                       color="error"
-                      sx={{ ml: 1 }}
                     />
                   </Box>
                 </Tooltip>
               )}
-            </Box>
+            </Card>
           </Grid>
         </Grid>
 
@@ -246,7 +364,7 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
                       }}
                     >
                       <Typography variant="body2" color="text.secondary" noWrap>
-                        {type}
+                        {formatInvestmentType(type)}
                       </Typography>
                       <Typography variant="body1" fontWeight="bold">
                         {formatCurrency(value)}

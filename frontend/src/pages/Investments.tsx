@@ -29,11 +29,13 @@ export interface Investment {
   id: number;
   name: string;
   type: string;
-  purchase_value: number;
+  purchase_price: string | number;
+  current_price: string | number;
+  quantity: string | number;
   current_value: number;
   purchase_date: string;
   symbol: string | null;
-  units: number | null;
+  units?: number | null; // Optional, using quantity instead
   notes: string | null;
   profit_loss: number;
   profit_loss_percentage: number;
@@ -44,6 +46,8 @@ export interface Investment {
   };
   created_at: string;
   updated_at: string;
+  sell_date: string | null;
+  sell_price: string | number | null;
 }
 
 const Investments = () => {
@@ -143,9 +147,9 @@ const Investments = () => {
       const formattedValues = {
         ...values,
         purchase_date: format(values.purchase_date, "yyyy-MM-dd"),
-        purchase_value: parseFloat(values.purchase_value),
-        current_value: parseFloat(values.current_value),
-        units: values.units ? parseFloat(values.units) : null,
+        purchase_price: parseFloat(values.purchase_price),
+        current_price: parseFloat(values.current_price),
+        quantity: values.quantity ? parseFloat(values.quantity) : null,
       };
 
       if (dialogMode === "add") {
