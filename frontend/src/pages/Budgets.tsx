@@ -32,6 +32,7 @@ import {
   Tabs,
   Tab,
   Paper,
+  FormHelperText,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -46,6 +47,7 @@ import {
   CheckCircleOutline as CheckIcon,
   ErrorOutline as WarningIcon,
   NewReleases as DangerIcon,
+  HelpOutline as HelpIcon,
 } from "@mui/icons-material";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -79,6 +81,7 @@ interface Budget {
   percentage: number;
   created_at: string;
   updated_at: string;
+  period: string; // 'daily', 'weekly', 'monthly', or 'annual'
   category: {
     id: number;
     name: string;
@@ -215,6 +218,7 @@ const Budgets = () => {
     category_id: Yup.number().nullable(),
     notes: Yup.string().nullable(),
     is_active: Yup.boolean(),
+    period: Yup.string().required("Period is required"),
   });
 
   // Form handling
@@ -227,6 +231,7 @@ const Budgets = () => {
       category_id: "",
       notes: "",
       is_active: true,
+      period: "monthly", // Default to monthly period
     },
     validationSchema: validationSchema,
     onSubmit: async (values) => {
@@ -333,6 +338,7 @@ const Budgets = () => {
         category_id: budget.category_id ? budget.category_id.toString() : "",
         notes: budget.notes || "",
         is_active: budget.is_active,
+        period: budget.period || "monthly", // Use budget period or default to monthly
       });
       setOpenDialog(true);
     }
@@ -341,6 +347,9 @@ const Budgets = () => {
   // Handle delete budget
   const handleDeleteConfirm = () => {
     handleBudgetMenuClose();
+    // Make sure we're keeping the selected budget ID when closing the menu
+    const budgetToDelete = selectedBudgetId;
+    setSelectedBudgetId(budgetToDelete);
     setConfirmDeleteDialog(true);
   };
 
@@ -620,7 +629,24 @@ const Budgets = () => {
               <Grid item xs={12} sm={6}>
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
                   <DatePicker
-                    label="Start Date"
+                    label={
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        Start Date
+                        <Tooltip
+                          title="The date when your budget tracking begins. Combined with the end date, this defines the overall period your budget is active."
+                          arrow
+                        >
+                          <HelpIcon
+                            fontSize="small"
+                            sx={{
+                              ml: 0.5,
+                              fontSize: 16,
+                              color: "text.secondary",
+                            }}
+                          />
+                        </Tooltip>
+                      </Box>
+                    }
                     value={formik.values.start_date}
                     onChange={(date) =>
                       formik.setFieldValue("start_date", date)
@@ -645,7 +671,24 @@ const Budgets = () => {
               <Grid item xs={12} sm={6}>
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
                   <DatePicker
-                    label="End Date"
+                    label={
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        End Date
+                        <Tooltip
+                          title="The date when your budget tracking ends. This is the last day the budget is considered active."
+                          arrow
+                        >
+                          <HelpIcon
+                            fontSize="small"
+                            sx={{
+                              ml: 0.5,
+                              fontSize: 16,
+                              color: "text.secondary",
+                            }}
+                          />
+                        </Tooltip>
+                      </Box>
+                    }
                     value={formik.values.end_date}
                     onChange={(date) => formik.setFieldValue("end_date", date)}
                     slotProps={{
@@ -663,6 +706,59 @@ const Budgets = () => {
                     }}
                   />
                 </LocalizationProvider>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth margin="normal" variant="outlined">
+                  <InputLabel id="period-label">
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      Period
+                      <Tooltip
+                        title="The recurring time unit for budget calculations. For example, a 'monthly' period with a $300 budget means you can spend up to $300 each month within your start and end dates."
+                        arrow
+                      >
+                        <HelpIcon
+                          fontSize="small"
+                          sx={{
+                            ml: 0.5,
+                            fontSize: 16,
+                            color: "text.secondary",
+                          }}
+                        />
+                      </Tooltip>
+                    </Box>
+                  </InputLabel>
+                  <Select
+                    labelId="period-label"
+                    id="period"
+                    name="period"
+                    value={formik.values.period}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    error={
+                      formik.touched.period && Boolean(formik.errors.period)
+                    }
+                    label={
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        Period
+                        <HelpIcon
+                          fontSize="small"
+                          sx={{ ml: 0.5, fontSize: 16, opacity: 0 }}
+                        />
+                      </Box>
+                    }
+                  >
+                    <MenuItem value="daily">Daily</MenuItem>
+                    <MenuItem value="weekly">Weekly</MenuItem>
+                    <MenuItem value="monthly">Monthly (Default)</MenuItem>
+                    <MenuItem value="annual">Annual</MenuItem>
+                  </Select>
+                  {formik.touched.period && formik.errors.period && (
+                    <FormHelperText error>
+                      {formik.errors.period}
+                    </FormHelperText>
+                  )}
+                </FormControl>
               </Grid>
 
               <Grid item xs={12}>
@@ -717,6 +813,15 @@ const Budgets = () => {
             Are you sure you want to delete this budget? This action cannot be
             undone.
           </Typography>
+
+          {selectedBudgetId && (
+            <Typography sx={{ mt: 2, fontWeight: "bold" }}>
+              {`Budget: "${
+                budgets.find((b) => b.id === selectedBudgetId)?.name ||
+                "Unknown"
+              }"`}
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button
@@ -919,9 +1024,7 @@ const Budgets = () => {
                         variant="body1"
                         fontWeight="medium"
                         color={
-                          budget.remaining >= 0
-                            ? "success.main"
-                            : "error.main"
+                          budget.remaining >= 0 ? "success.main" : "error.main"
                         }
                       >
                         {formatCurrency(budget.remaining)}

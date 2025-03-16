@@ -58,7 +58,8 @@ interface Category {
   description: string | null;
   icon: string | null;
   is_active: boolean;
-  transaction_count: number;
+  transactions_count: number;
+  budgets_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -151,16 +152,14 @@ const Categories = () => {
               is_active:
                 category.is_active !== undefined ? category.is_active : true,
               // Use either transactions_count (from Laravel withCount) or transaction_count if provided
-              transaction_count:
+              transactions_count:
                 category.transactions_count || category.transaction_count || 0,
+              budgets_count:
+                category.budgets_count || category.budget_count || 0,
             })
           );
 
           setCategories(processedCategories);
-          console.log(
-            "Categories with transaction counts:",
-            processedCategories
-          );
         } else {
           setError("Failed to fetch categories");
         }
@@ -220,7 +219,6 @@ const Categories = () => {
           }
         } else if (dialogMode === "edit" && currentCategory) {
           // Update existing category
-          console.log("Updating category with values:", values);
           const response = await axios.put(
             `${API_URL}/categories/${currentCategory.id}`,
             values,
@@ -230,8 +228,6 @@ const Categories = () => {
               },
             }
           );
-
-          console.log("Category update response:", response.data);
 
           if (response.data.success) {
             setCategories(
@@ -664,15 +660,25 @@ const Categories = () => {
                 }"`}
               </Typography>
 
-              {/* Show warning if category has transactions */}
-              {selectedCategoryId &&
-                (categories.find((c) => c.id === selectedCategoryId)
-                  ?.transaction_count || 0) > 0 && (
-                  <Typography sx={{ mt: 1, color: "error.main" }}>
-                    Cannot delete this category because it has associated
-                    transactions.
-                  </Typography>
-                )}
+              {/* Show warning if category has transactions or budgets */}
+              {selectedCategoryId && (
+                <>
+                  {(categories.find((c) => c.id === selectedCategoryId)
+                    ?.transactions_count || 0) > 0 && (
+                    <Typography sx={{ mt: 1, color: "error.main" }}>
+                      Cannot delete this category because it has associated
+                      transactions.
+                    </Typography>
+                  )}
+                  {(categories.find((c) => c.id === selectedCategoryId)
+                    ?.budgets_count || 0) > 0 && (
+                    <Typography sx={{ mt: 1, color: "error.main" }}>
+                      Cannot delete this category because it has associated
+                      budgets.
+                    </Typography>
+                  )}
+                </>
+              )}
             </>
           )}
         </DialogContent>
@@ -689,9 +695,11 @@ const Categories = () => {
 
           {/* Conditionally render delete button with tooltip if needed */}
           {selectedCategoryId &&
-          (categories.find((c) => c.id === selectedCategoryId)
-            ?.transaction_count || 0) > 0 ? (
-            <Tooltip title="Cannot delete categories with associated transactions">
+          ((categories.find((c) => c.id === selectedCategoryId)
+            ?.transactions_count || 0) > 0 ||
+            (categories.find((c) => c.id === selectedCategoryId)
+              ?.budgets_count || 0) > 0) ? (
+            <Tooltip title="Cannot delete categories with associated transactions or budgets">
               <span>
                 <Button color="error" variant="contained" disabled={true}>
                   Delete
@@ -915,10 +923,21 @@ const Categories = () => {
                   <Box sx={{ mt: 2 }}>
                     <Tooltip title="Number of transactions using this category">
                       <Typography variant="body2" color="text.secondary">
-                        {category.transaction_count || 0}{" "}
-                        {category.transaction_count === 1
+                        {category.transactions_count || 0}{" "}
+                        {category.transactions_count === 1
                           ? "transaction"
                           : "transactions"}
+                      </Typography>
+                    </Tooltip>
+
+                    <Tooltip title="Number of budgets using this category">
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 0.5 }}
+                      >
+                        {category.budgets_count || 0}{" "}
+                        {category.budgets_count === 1 ? "budget" : "budgets"}
                       </Typography>
                     </Tooltip>
                   </Box>

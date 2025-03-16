@@ -21,9 +21,10 @@ class CategoryController extends Controller
                 ->orWhereNull('user_id'); // Include system default categories
         })
             ->orderBy('name')
-            ->withCount('transactions') // This adds a transactions_count attribute to each category
+            ->withCount(['transactions', 'budgets']) // Add budgets to the withCount array
             ->get();
 
+        // We keep the plural count property names as they are correct
         return response()->json([
             'success' => true,
             'data' => $categories
@@ -74,6 +75,7 @@ class CategoryController extends Controller
             $query->where('user_id', $user->id)
                 ->orWhereNull('user_id');
         })
+            ->withCount(['transactions', 'budgets'])
             ->find($id);
 
         if (!$category) {
@@ -136,7 +138,9 @@ class CategoryController extends Controller
     public function destroy(string $id)
     {
         $user = Auth::user();
-        $category = Category::where('user_id', $user->id)->find($id);
+        $category = Category::where('user_id', $user->id)
+            ->withCount(['transactions', 'budgets'])
+            ->find($id);
 
         if (!$category) {
             return response()->json([
@@ -146,7 +150,7 @@ class CategoryController extends Controller
         }
 
         // Check if category has transactions
-        if ($category->transactions()->count() > 0) {
+        if ($category->transactions_count > 0) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot delete category with associated transactions'
@@ -154,7 +158,7 @@ class CategoryController extends Controller
         }
 
         // Check if category has budgets
-        if ($category->budgets()->count() > 0) {
+        if ($category->budgets_count > 0) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot delete category with associated budgets'
