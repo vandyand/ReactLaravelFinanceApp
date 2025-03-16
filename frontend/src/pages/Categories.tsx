@@ -144,7 +144,23 @@ const Categories = () => {
         });
 
         if (response.data.success) {
-          setCategories(response.data.data);
+          // Process categories with the transaction_count or transactions_count from backend
+          const processedCategories = response.data.data.map(
+            (category: any) => ({
+              ...category,
+              is_active:
+                category.is_active !== undefined ? category.is_active : true,
+              // Use either transactions_count (from Laravel withCount) or transaction_count if provided
+              transaction_count:
+                category.transactions_count || category.transaction_count || 0,
+            })
+          );
+
+          setCategories(processedCategories);
+          console.log(
+            "Categories with transaction counts:",
+            processedCategories
+          );
         } else {
           setError("Failed to fetch categories");
         }
@@ -204,6 +220,7 @@ const Categories = () => {
           }
         } else if (dialogMode === "edit" && currentCategory) {
           // Update existing category
+          console.log("Updating category with values:", values);
           const response = await axios.put(
             `${API_URL}/categories/${currentCategory.id}`,
             values,
@@ -213,6 +230,8 @@ const Categories = () => {
               },
             }
           );
+
+          console.log("Category update response:", response.data);
 
           if (response.data.success) {
             setCategories(
@@ -271,7 +290,7 @@ const Categories = () => {
         color: category.color,
         description: category.description || "",
         icon: category.icon || "",
-        is_active: category.is_active,
+        is_active: category.is_active !== undefined ? category.is_active : true,
       });
       setOpenDialog(true);
     }
@@ -280,17 +299,34 @@ const Categories = () => {
   // Handle delete category
   const handleDeleteConfirm = () => {
     handleCategoryMenuClose();
+    // Store the category ID before closing the menu
+    const categoryIdToDelete = selectedCategoryId;
     setConfirmDeleteDialog(true);
+    // Ensure the ID is still set when the dialog opens
+    setSelectedCategoryId(categoryIdToDelete);
   };
 
   // Confirm delete category
   const confirmDelete = async () => {
-    if (!selectedCategoryId) return;
+    // Double-check for logs
+    console.log(
+      "Current selectedCategoryId at start of confirmDelete:",
+      selectedCategoryId
+    );
+
+    if (!selectedCategoryId) {
+      console.error("No category selected for deletion");
+      return;
+    }
+
+    // Store ID locally to ensure it doesn't change during the operation
+    const categoryIdToDelete = selectedCategoryId;
 
     setActionInProgress(true);
     try {
+      console.log(`Deleting category with ID: ${categoryIdToDelete}`);
       const response = await axios.delete(
-        `${API_URL}/categories/${selectedCategoryId}`,
+        `${API_URL}/categories/${categoryIdToDelete}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -298,22 +334,33 @@ const Categories = () => {
         }
       );
 
+      console.log("Delete response:", response.data);
+
       if (response.data.success) {
+        // Remove the deleted category from the state
         setCategories(
-          categories.filter((category) => category.id !== selectedCategoryId)
+          categories.filter((category) => category.id !== categoryIdToDelete)
         );
         setSnackbar({
           open: true,
           message: "Category deleted successfully",
           severity: "success",
         });
+      } else {
+        setSnackbar({
+          open: true,
+          message: response.data.message || "Failed to delete category",
+          severity: "error",
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error deleting category:", err);
+      const errorMessage =
+        err.response?.data?.message ||
+        "Failed to delete category. It may be in use by existing transactions or budgets.";
       setSnackbar({
         open: true,
-        message:
-          "Failed to delete category. It may be in use by existing transactions.",
+        message: errorMessage,
         severity: "error",
       });
     } finally {
@@ -607,26 +654,73 @@ const Categories = () => {
             Are you sure you want to delete this category? If it's used by any
             transactions, they will become uncategorized.
           </Typography>
+
+          {selectedCategoryId && (
+            <>
+              <Typography sx={{ mt: 2, fontWeight: "bold" }}>
+                {`Category: "${
+                  categories.find((c) => c.id === selectedCategoryId)?.name ||
+                  "Unknown"
+                }"`}
+              </Typography>
+
+              {/* Show warning if category has transactions */}
+              {selectedCategoryId &&
+                (categories.find((c) => c.id === selectedCategoryId)
+                  ?.transaction_count || 0) > 0 && (
+                  <Typography sx={{ mt: 1, color: "error.main" }}>
+                    Cannot delete this category because it has associated
+                    transactions.
+                  </Typography>
+                )}
+            </>
+          )}
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={() => setConfirmDeleteDialog(false)}
+            onClick={() => {
+              setConfirmDeleteDialog(false);
+              setSelectedCategoryId(null);
+            }}
             disabled={actionInProgress}
           >
             Cancel
           </Button>
-          <Button
-            onClick={confirmDelete}
-            color="error"
-            variant="contained"
-            disabled={actionInProgress}
-          >
-            {actionInProgress ? (
-              <CircularProgress size={24} color="inherit" />
-            ) : (
-              "Delete"
-            )}
-          </Button>
+
+          {/* Conditionally render delete button with tooltip if needed */}
+          {selectedCategoryId &&
+          (categories.find((c) => c.id === selectedCategoryId)
+            ?.transaction_count || 0) > 0 ? (
+            <Tooltip title="Cannot delete categories with associated transactions">
+              <span>
+                <Button color="error" variant="contained" disabled={true}>
+                  Delete
+                </Button>
+              </span>
+            </Tooltip>
+          ) : (
+            <Button
+              onClick={() => {
+                if (selectedCategoryId) {
+                  confirmDelete();
+                } else {
+                  console.error(
+                    "No category selected for deletion in button click"
+                  );
+                  setConfirmDeleteDialog(false);
+                }
+              }}
+              color="error"
+              variant="contained"
+              disabled={actionInProgress}
+            >
+              {actionInProgress ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
@@ -703,100 +797,149 @@ const Categories = () => {
     }
 
     return (
-      <Grid container spacing={3}>
-        {filteredCategories.map((category) => (
-          <Grid item key={category.id} xs={12} sm={6} md={4} lg={3}>
-            <Card
-              elevation={0}
+      <Box sx={{ width: "100%" }}>
+        <Grid container spacing={3}>
+          {filteredCategories.map((category) => (
+            <Grid
+              item
+              xs={12}
+              sm={6}
+              md={4}
+              lg={3}
+              key={category.id}
               sx={{
-                borderRadius: 2,
-                height: "100%",
-                transition: "transform 0.2s, box-shadow 0.2s",
-                "&:hover": {
-                  transform: "translateY(-4px)",
-                  boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
+                minWidth: {
+                  xs: "100%",
+                  sm: "376px",
                 },
-                opacity: category.is_active ? 1 : 0.6,
+                flexGrow: 1,
               }}
             >
-              <CardContent>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <Avatar
+              <Card
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  position: "relative",
+                  opacity:
+                    category.is_active !== undefined
+                      ? category.is_active
+                        ? 1
+                        : 0.6
+                      : 1,
+                  transition: "opacity 0.3s ease",
+                  "&:hover": {
+                    boxShadow: 3,
+                  },
+                }}
+              >
+                <CardContent>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <Box
                       sx={{
-                        bgcolor: category.color,
-                        width: 40,
-                        height: 40,
-                        mr: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        minWidth: 0,
+                        flex: 1,
+                        mr: 1,
                       }}
                     >
-                      <LabelIcon />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="h6" sx={{ wordBreak: "break-word" }}>
-                        {category.name}
-                      </Typography>
-                      <Chip
-                        label={
-                          category.type.charAt(0).toUpperCase() +
-                          category.type.slice(1)
-                        }
-                        size="small"
-                        color={
-                          category.type === "income" ? "success" : "primary"
-                        }
-                        sx={{ mt: 0.5 }}
-                      />
+                      <Avatar
+                        sx={{
+                          bgcolor: category.color,
+                          width: 40,
+                          height: 40,
+                          mr: 2,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <LabelIcon />
+                      </Avatar>
+                      <Box sx={{ minWidth: 0, overflow: "hidden" }}>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            wordBreak: "break-word",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {category.name}
+                        </Typography>
+                        <Chip
+                          label={
+                            category.type.charAt(0).toUpperCase() +
+                            category.type.slice(1)
+                          }
+                          size="small"
+                          color={
+                            category.type === "income" ? "success" : "primary"
+                          }
+                          sx={{ mt: 0.5 }}
+                        />
+                      </Box>
                     </Box>
+                    <IconButton
+                      aria-label="category settings"
+                      onClick={(e) => handleCategoryMenuClick(e, category.id)}
+                      sx={{ flexShrink: 0 }}
+                    >
+                      <MoreVertIcon />
+                    </IconButton>
                   </Box>
-                  <IconButton
-                    aria-label="category settings"
-                    onClick={(e) => handleCategoryMenuClick(e, category.id)}
-                  >
-                    <MoreVertIcon />
-                  </IconButton>
-                </Box>
 
-                {category.description && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mt: 2, wordBreak: "break-word" }}
-                  >
-                    {category.description}
-                  </Typography>
-                )}
-
-                <Box sx={{ mt: 2 }}>
-                  <Tooltip title="Number of transactions using this category">
-                    <Typography variant="body2" color="text.secondary">
-                      {category.transaction_count}{" "}
-                      {category.transaction_count === 1
-                        ? "transaction"
-                        : "transactions"}
+                  {category.description && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        mt: 2,
+                        wordBreak: "break-word",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {category.description}
                     </Typography>
-                  </Tooltip>
-                </Box>
+                  )}
 
-                {!category.is_active && (
-                  <Chip
-                    label="Inactive"
-                    size="small"
-                    variant="outlined"
-                    sx={{ mt: 1 }}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                  <Box sx={{ mt: 2 }}>
+                    <Tooltip title="Number of transactions using this category">
+                      <Typography variant="body2" color="text.secondary">
+                        {category.transaction_count || 0}{" "}
+                        {category.transaction_count === 1
+                          ? "transaction"
+                          : "transactions"}
+                      </Typography>
+                    </Tooltip>
+                  </Box>
+
+                  {(category.is_active === undefined ||
+                    !category.is_active) && (
+                    <Chip
+                      label="Inactive"
+                      size="small"
+                      color="default"
+                      sx={{
+                        mt: 1,
+                      }}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
     );
   }
 };

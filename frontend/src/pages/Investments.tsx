@@ -150,6 +150,7 @@ const Investments = () => {
         purchase_price: parseFloat(values.purchase_price),
         current_price: parseFloat(values.current_price),
         quantity: values.quantity ? parseFloat(values.quantity) : null,
+        account_id: parseInt(values.account_id, 10), // Ensure account_id is a number
       };
 
       if (dialogMode === "add") {

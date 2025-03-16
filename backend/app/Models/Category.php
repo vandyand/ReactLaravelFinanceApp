@@ -25,6 +25,7 @@ class Category extends Model
         'description',
         'is_system',
         'parent_id',
+        'is_active',
     ];
 
     /**
@@ -34,6 +35,7 @@ class Category extends Model
      */
     protected $casts = [
         'is_system' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     /**

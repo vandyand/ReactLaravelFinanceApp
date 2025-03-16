@@ -16,9 +16,12 @@ class CategoryController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $categories = Category::where('user_id', $user->id)
-            ->orWhereNull('user_id')  // Include system default categories
+        $categories = Category::where(function ($query) use ($user) {
+            $query->where('user_id', $user->id)
+                ->orWhereNull('user_id'); // Include system default categories
+        })
             ->orderBy('name')
+            ->withCount('transactions') // This adds a transactions_count attribute to each category
             ->get();
 
         return response()->json([
@@ -39,6 +42,7 @@ class CategoryController extends Controller
             'icon' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'parent_id' => 'nullable|exists:categories,id',
+            'is_active' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -107,6 +111,7 @@ class CategoryController extends Controller
             'icon' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'parent_id' => 'nullable|exists:categories,id',
+            'is_active' => 'boolean',
         ]);
 
         if ($validator->fails()) {

@@ -1,6 +1,6 @@
 ---
 description: CRITICAL! DO NOT restart the Vite development server under any circumstances
-globs: frontend/**/*.{js,jsx,ts,tsx,css,scss,sass,html}
+globs: **/*
 alwaysApply: true
 ---
 

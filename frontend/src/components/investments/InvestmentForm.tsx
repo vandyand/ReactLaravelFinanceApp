@@ -12,6 +12,7 @@ import {
   MenuItem,
   InputAdornment,
   CircularProgress,
+  FormHelperText,
 } from "@mui/material";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -19,6 +20,10 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { Investment } from "../../pages/Investments";
+import { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "../../store";
+import { fetchAccounts } from "../../store/slices/accountSlice";
 
 interface InvestmentFormProps {
   open: boolean;
@@ -70,6 +75,21 @@ const formatInvestmentType = (type: string): string => {
     .join(" ");
 };
 
+// Currencies list
+const currencies = [
+  { code: "USD", name: "US Dollar" },
+  { code: "EUR", name: "Euro" },
+  { code: "GBP", name: "British Pound" },
+  { code: "JPY", name: "Japanese Yen" },
+  { code: "CAD", name: "Canadian Dollar" },
+  { code: "AUD", name: "Australian Dollar" },
+  { code: "CHF", name: "Swiss Franc" },
+  { code: "CNY", name: "Chinese Yuan" },
+  { code: "INR", name: "Indian Rupee" },
+  { code: "BTC", name: "Bitcoin" },
+  { code: "ETH", name: "Ethereum" },
+];
+
 const InvestmentForm = ({
   open,
   onClose,
@@ -78,6 +98,71 @@ const InvestmentForm = ({
   mode,
   actionInProgress,
 }: InvestmentFormProps) => {
+  const dispatch = useDispatch();
+  const { accounts } = useSelector((state: RootState) => state.accounts);
+
+  // Fetch accounts when component mounts
+  useEffect(() => {
+    dispatch(fetchAccounts());
+  }, [dispatch]);
+
+  // Create a state to hold the initial values
+  const [initialValues, setInitialValues] = useState({
+    name: "",
+    type: "stock",
+    purchase_price: "",
+    current_price: "",
+    purchase_date: new Date(),
+    symbol: "",
+    quantity: "",
+    notes: "",
+    account_id: "",
+    currency: "USD",
+  });
+
+  // Set initial values when currentInvestment changes or mode changes
+  useEffect(() => {
+    if (currentInvestment) {
+      setInitialValues({
+        name: currentInvestment.name || "",
+        type: currentInvestment.type || "stock",
+        purchase_price:
+          currentInvestment.purchase_price !== undefined
+            ? currentInvestment.purchase_price.toString()
+            : "",
+        current_price:
+          currentInvestment.current_price !== undefined
+            ? currentInvestment.current_price.toString()
+            : "",
+        purchase_date: currentInvestment.purchase_date
+          ? new Date(currentInvestment.purchase_date)
+          : new Date(),
+        symbol: currentInvestment.symbol || "",
+        quantity:
+          currentInvestment.quantity !== undefined
+            ? currentInvestment.quantity.toString()
+            : "",
+        notes: currentInvestment.notes || "",
+        account_id: currentInvestment.account?.id?.toString() || "",
+        currency: currentInvestment.account?.currency || "USD",
+      });
+    } else {
+      // Reset to defaults for new investment
+      setInitialValues({
+        name: "",
+        type: "stock",
+        purchase_price: "",
+        current_price: "",
+        purchase_date: new Date(),
+        symbol: "",
+        quantity: "",
+        notes: "",
+        account_id: accounts.length > 0 ? accounts[0].id.toString() : "",
+        currency: "USD",
+      });
+    }
+  }, [currentInvestment, mode, accounts]);
+
   // Form validation schema
   const validationSchema = Yup.object({
     name: Yup.string().required("Investment name is required"),
@@ -99,31 +184,13 @@ const InvestmentForm = ({
         (value) => value === null || value > 0
       ),
     notes: Yup.string().nullable(),
+    account_id: Yup.number().required("Account is required"),
+    currency: Yup.string().required("Currency is required"),
   });
 
   // Form handling
   const formik = useFormik({
-    initialValues: {
-      name: currentInvestment?.name || "",
-      type: currentInvestment?.type || "stock", // Default to stock instead of Stocks
-      purchase_price:
-        currentInvestment?.purchase_price !== undefined
-          ? currentInvestment.purchase_price.toString()
-          : "",
-      current_price:
-        currentInvestment?.current_price !== undefined
-          ? currentInvestment.current_price.toString()
-          : "",
-      purchase_date: currentInvestment?.purchase_date
-        ? new Date(currentInvestment.purchase_date)
-        : new Date(),
-      symbol: currentInvestment?.symbol || "",
-      quantity:
-        currentInvestment?.quantity !== undefined
-          ? currentInvestment.quantity.toString()
-          : "",
-      notes: currentInvestment?.notes || "",
-    },
+    initialValues: initialValues,
     validationSchema: validationSchema,
     enableReinitialize: true,
     onSubmit: onSubmit,
@@ -137,6 +204,76 @@ const InvestmentForm = ({
       <form onSubmit={formik.handleSubmit}>
         <DialogContent>
           <Grid container spacing={2}>
+            {/* Account Selection */}
+            <Grid item xs={12} sm={6}>
+              <FormControl
+                fullWidth
+                margin="normal"
+                variant="outlined"
+                error={
+                  formik.touched.account_id && Boolean(formik.errors.account_id)
+                }
+              >
+                <InputLabel id="account-label">Account</InputLabel>
+                <Select
+                  labelId="account-label"
+                  id="account_id"
+                  name="account_id"
+                  value={formik.values.account_id}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  label="Account"
+                >
+                  {accounts.length === 0 ? (
+                    <MenuItem disabled value="">
+                      No accounts available
+                    </MenuItem>
+                  ) : (
+                    accounts.map((account) => (
+                      <MenuItem key={account.id} value={account.id}>
+                        {account.name}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+                {formik.touched.account_id && formik.errors.account_id && (
+                  <FormHelperText>{formik.errors.account_id}</FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
+
+            {/* Currency Selection */}
+            <Grid item xs={12} sm={6}>
+              <FormControl
+                fullWidth
+                margin="normal"
+                variant="outlined"
+                error={
+                  formik.touched.currency && Boolean(formik.errors.currency)
+                }
+              >
+                <InputLabel id="currency-label">Currency</InputLabel>
+                <Select
+                  labelId="currency-label"
+                  id="currency"
+                  name="currency"
+                  value={formik.values.currency}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  label="Currency"
+                >
+                  {currencies.map((currency) => (
+                    <MenuItem key={currency.code} value={currency.code}>
+                      {currency.code} - {currency.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {formik.touched.currency && formik.errors.currency && (
+                  <FormHelperText>{formik.errors.currency}</FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
+
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth

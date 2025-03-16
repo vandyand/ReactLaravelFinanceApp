@@ -38,6 +38,10 @@ import {
   Savings as SavingsIcon,
   MoreVert as MoreVertIcon,
   KeyboardArrowRight as KeyboardArrowRightIcon,
+  Money as MoneyIcon,
+  LocalAtm as CashIcon,
+  Receipt as LoanIcon,
+  TrendingUp as InvestmentIcon,
 } from "@mui/icons-material";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -71,9 +75,9 @@ const accountTypeIcons: Record<AccountType, React.ReactNode> = {
   checking: <BankIcon />,
   savings: <SavingsIcon />,
   credit_card: <CreditCardIcon />,
-  investment: <SavingsIcon />,
-  cash: <BankIcon />,
-  other: <BankIcon />,
+  investment: <InvestmentIcon />,
+  cash: <CashIcon />,
+  other: <LoanIcon />,
 };
 
 const accountTypeLabels: Record<AccountType, string> = {
@@ -82,7 +86,7 @@ const accountTypeLabels: Record<AccountType, string> = {
   credit_card: "Credit Card",
   investment: "Investment",
   cash: "Cash",
-  other: "Other",
+  other: "Debt",
 };
 
 // Currency options
@@ -94,6 +98,16 @@ const currencies = [
   { value: "CAD", label: "Canadian Dollar (C$)" },
   { value: "AUD", label: "Australian Dollar (A$)" },
 ];
+
+// Get icon for account type - ensures type safety
+const getAccountIcon = (accountType: string): React.ReactNode => {
+  // Make sure we have a valid account type
+  if (Object.keys(accountTypeIcons).includes(accountType as AccountType)) {
+    return accountTypeIcons[accountType as AccountType];
+  }
+  // Default to Debt icon for unknown types
+  return accountTypeIcons.other;
+};
 
 const Accounts = () => {
   const { token } = useSelector((state: RootState) => state.auth);
@@ -428,7 +442,13 @@ const Accounts = () => {
 
   // Group accounts by type
   const accountsByType = accounts.reduce((acc, account) => {
-    const type = account.type;
+    let type = account.type;
+
+    // Make sure type is a valid key in our mappings
+    if (!Object.keys(accountTypeIcons).includes(type)) {
+      type = "other";
+    }
+
     if (!acc[type]) {
       acc[type] = [];
     }
@@ -510,16 +530,30 @@ const Accounts = () => {
 
       {/* Account Cards */}
       {Object.entries(accountsByType).map(([type, accountsOfType]) => (
-        <Box key={type} sx={{ mb: 4 }}>
+        <Box key={type} sx={{ mb: 4 }} data-account-type={type}>
           <Typography
             variant="h6"
             gutterBottom
-            sx={{ display: "flex", alignItems: "center" }}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+            }}
           >
-            {accountTypeIcons[type as AccountType]}
-            <Box sx={{ ml: 1 }}>
-              {accountTypeLabels[type as AccountType]} Accounts
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                color: "primary.main",
+                "& svg": {
+                  fontSize: 24,
+                },
+              }}
+              className={`account-type-icon account-type-${type}`}
+            >
+              {getAccountIcon(type)}
             </Box>
+            {accountTypeLabels[type as AccountType]} Accounts
           </Typography>
           <Grid container spacing={3}>
             {accountsOfType.map((account) => (
@@ -563,7 +597,7 @@ const Accounts = () => {
                               : "action.disabledBackground",
                           }}
                         >
-                          {accountTypeIcons[account.type]}
+                          {getAccountIcon(account.type)}
                         </Avatar>
                         <Box>
                           <Typography variant="h6" fontWeight="bold">
@@ -688,7 +722,7 @@ const Accounts = () => {
                     <MenuItem value="credit_card">Credit Card</MenuItem>
                     <MenuItem value="investment">Investment</MenuItem>
                     <MenuItem value="cash">Cash</MenuItem>
-                    <MenuItem value="other">Other</MenuItem>
+                    <MenuItem value="other">Debt</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>

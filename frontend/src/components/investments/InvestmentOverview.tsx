@@ -151,13 +151,6 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
         ? ((totalValue - totalPurchaseValue) / totalPurchaseValue) * 100
         : 0;
 
-    console.log("Portfolio metrics:", {
-      totalValue,
-      totalPurchaseValue,
-      totalGainLoss,
-      percentageReturn,
-    });
-
     setSummary({
       totalInvestments: investments.length,
       totalValue,
@@ -263,20 +256,7 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
                   )}`}
                 >
                   <Box>
-                    <Typography
-                      variant="body1"
-                      fontWeight="bold"
-                      sx={{
-                        wordBreak: "break-word",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                        lineHeight: 1.2,
-                        mb: 0.5,
-                        height: "2.4em",
-                      }}
-                    >
+                    <Typography variant="h5" fontWeight="bold" sx={{ mb: 0.5 }}>
                       {summary.bestPerforming.name}
                     </Typography>
                     <Chip
@@ -314,20 +294,7 @@ const InvestmentOverview = ({ investments }: InvestmentOverviewProps) => {
                   )}`}
                 >
                   <Box>
-                    <Typography
-                      variant="body1"
-                      fontWeight="bold"
-                      sx={{
-                        wordBreak: "break-word",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                        lineHeight: 1.2,
-                        mb: 0.5,
-                        height: "2.4em",
-                      }}
-                    >
+                    <Typography variant="h5" fontWeight="bold" sx={{ mb: 0.5 }}>
                       {summary.worstPerforming.name}
                     </Typography>
                     <Chip
