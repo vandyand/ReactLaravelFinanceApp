@@ -17,11 +17,26 @@ class Cors
      */
     public function handle(Request $request, Closure $next): Response
     {
+        $frontendUrl = env('FRONTEND_URL', 'https://fintecfun-frontend-a0753a40ce39.herokuapp.com');
+
+        // Handle preflight OPTIONS request
+        if ($request->getMethod() === 'OPTIONS') {
+            $response = response('', 200);
+            $response->headers->set('Access-Control-Allow-Origin', $frontendUrl);
+            $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+            $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN');
+            $response->headers->set('Access-Control-Allow-Credentials', 'true');
+            $response->headers->set('Access-Control-Max-Age', '86400');
+            return $response;
+        }
+
         $response = $next($request);
 
-        $response->headers->set('Access-Control-Allow-Origin', '*');
-        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        // Handle actual request
+        $response->headers->set('Access-Control-Allow-Origin', $frontendUrl);
+        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
         $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN');
+        $response->headers->set('Access-Control-Allow-Credentials', 'true');
 
         return $response;
     }

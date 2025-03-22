@@ -6,6 +6,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Account;
 use App\Models\User;
+use Faker\Factory as Faker;
 
 class AccountSeeder extends Seeder
 {
@@ -14,6 +15,7 @@ class AccountSeeder extends Seeder
      */
     public function run(): void
     {
+        $faker = Faker::create();
         $users = User::all();
 
         foreach ($users as $user) {
@@ -21,23 +23,23 @@ class AccountSeeder extends Seeder
             Account::create([
                 'user_id' => $user->id,
                 'name' => 'Primary Checking',
-                'account_number' => 'CH' . fake()->unique()->numerify('########'),
+                'account_number' => 'CH' . $faker->unique()->numerify('########'),
                 'institution' => 'National Bank',
                 'type' => 'checking',
-                'balance' => fake()->randomFloat(2, 1000, 15000),
+                'balance' => $faker->randomFloat(2, 1000, 15000),
                 'currency' => 'USD',
                 'description' => 'Main checking account for daily expenses',
                 'is_active' => true,
             ]);
 
-            if (fake()->boolean(70)) { // 70% of users have a secondary checking
+            if ($faker->boolean(70)) { // 70% of users have a secondary checking
                 Account::create([
                     'user_id' => $user->id,
                     'name' => 'Secondary Checking',
-                    'account_number' => 'CH' . fake()->unique()->numerify('########'),
+                    'account_number' => 'CH' . $faker->unique()->numerify('########'),
                     'institution' => 'City Credit Union',
                     'type' => 'checking',
-                    'balance' => fake()->randomFloat(2, 500, 5000),
+                    'balance' => $faker->randomFloat(2, 500, 5000),
                     'currency' => 'USD',
                     'description' => 'Secondary checking account for specific expenses',
                     'is_active' => true,
@@ -48,23 +50,23 @@ class AccountSeeder extends Seeder
             Account::create([
                 'user_id' => $user->id,
                 'name' => 'Emergency Fund',
-                'account_number' => 'SV' . fake()->unique()->numerify('########'),
+                'account_number' => 'SV' . $faker->unique()->numerify('########'),
                 'institution' => 'National Bank',
                 'type' => 'savings',
-                'balance' => fake()->randomFloat(2, 2000, 30000),
+                'balance' => $faker->randomFloat(2, 2000, 30000),
                 'currency' => 'USD',
                 'description' => 'Emergency savings for unexpected expenses',
                 'is_active' => true,
             ]);
 
-            if (fake()->boolean(60)) { // 60% of users have a vacation savings
+            if ($faker->boolean(60)) { // 60% of users have a vacation savings
                 Account::create([
                     'user_id' => $user->id,
                     'name' => 'Vacation Savings',
-                    'account_number' => 'SV' . fake()->unique()->numerify('########'),
+                    'account_number' => 'SV' . $faker->unique()->numerify('########'),
                     'institution' => 'Online Savings Bank',
                     'type' => 'savings',
-                    'balance' => fake()->randomFloat(2, 500, 10000),
+                    'balance' => $faker->randomFloat(2, 500, 10000),
                     'currency' => 'USD',
                     'description' => 'Saving for upcoming vacations',
                     'is_active' => true,
@@ -76,24 +78,24 @@ class AccountSeeder extends Seeder
                 [
                     'name' => 'Rewards Credit Card',
                     'institution' => 'Capital One',
-                    'balance' => fake()->randomFloat(2, 0, 5000),
+                    'balance' => $faker->randomFloat(2, 0, 5000),
                     'description' => 'Card used for earning travel points',
                 ],
                 [
                     'name' => 'Cashback Credit Card',
                     'institution' => 'Chase',
-                    'balance' => fake()->randomFloat(2, 0, 3000),
+                    'balance' => $faker->randomFloat(2, 0, 3000),
                     'description' => 'Card used for cashback on purchases',
                 ],
             ];
 
             foreach ($creditCards as $index => $card) {
                 // First card for all users, second card only for 50% of users
-                if ($index === 0 || fake()->boolean(50)) {
+                if ($index === 0 || $faker->boolean(50)) {
                     Account::create([
                         'user_id' => $user->id,
                         'name' => $card['name'],
-                        'account_number' => 'CC' . fake()->unique()->numerify('############'),
+                        'account_number' => 'CC' . $faker->unique()->numerify('############'),
                         'institution' => $card['institution'],
                         'type' => 'credit_card',
                         'balance' => -1 * $card['balance'], // Negative balance for credit cards
@@ -109,39 +111,39 @@ class AccountSeeder extends Seeder
                 [
                     'name' => 'Mortgage',
                     'institution' => 'Home Loan Bank',
-                    'balance' => fake()->randomFloat(2, 100000, 500000),
+                    'balance' => $faker->randomFloat(2, 100000, 500000),
                     'description' => 'Home mortgage loan',
                     'probability' => 60, // 60% of users have a mortgage
                 ],
                 [
                     'name' => 'Auto Loan',
                     'institution' => 'Auto Finance',
-                    'balance' => fake()->randomFloat(2, 5000, 40000),
+                    'balance' => $faker->randomFloat(2, 5000, 40000),
                     'description' => 'Car loan',
                     'probability' => 70, // 70% of users have an auto loan
                 ],
                 [
                     'name' => 'Student Loan',
                     'institution' => 'Education Funding',
-                    'balance' => fake()->randomFloat(2, 10000, 100000),
+                    'balance' => $faker->randomFloat(2, 10000, 100000),
                     'description' => 'Student loan',
                     'probability' => 50, // 50% of users have student loans
                 ],
                 [
                     'name' => 'Personal Loan',
                     'institution' => 'Lending Tree',
-                    'balance' => fake()->randomFloat(2, 2000, 20000),
+                    'balance' => $faker->randomFloat(2, 2000, 20000),
                     'description' => 'Personal loan',
                     'probability' => 30, // 30% of users have a personal loan
                 ],
             ];
 
             foreach ($loans as $loan) {
-                if (fake()->boolean($loan['probability'])) {
+                if ($faker->boolean($loan['probability'])) {
                     Account::create([
                         'user_id' => $user->id,
                         'name' => $loan['name'],
-                        'account_number' => 'LN' . fake()->unique()->numerify('#########'),
+                        'account_number' => 'LN' . $faker->unique()->numerify('#########'),
                         'institution' => $loan['institution'],
                         'type' => 'loan',
                         'balance' => -1 * $loan['balance'], // Negative balance for loans
@@ -157,39 +159,39 @@ class AccountSeeder extends Seeder
                 [
                     'name' => '401(k)',
                     'institution' => 'Fidelity',
-                    'balance' => fake()->randomFloat(2, 10000, 500000),
+                    'balance' => $faker->randomFloat(2, 10000, 500000),
                     'description' => 'Employer-sponsored retirement account',
                     'probability' => 80, // 80% of users have a 401(k)
                 ],
                 [
                     'name' => 'IRA',
                     'institution' => 'Vanguard',
-                    'balance' => fake()->randomFloat(2, 5000, 100000),
+                    'balance' => $faker->randomFloat(2, 5000, 100000),
                     'description' => 'Individual Retirement Account',
                     'probability' => 60, // 60% of users have an IRA
                 ],
                 [
                     'name' => 'Brokerage Account',
                     'institution' => 'Schwab',
-                    'balance' => fake()->randomFloat(2, 1000, 100000),
+                    'balance' => $faker->randomFloat(2, 1000, 100000),
                     'description' => 'Individual investment account',
                     'probability' => 50, // 50% of users have a brokerage account
                 ],
                 [
                     'name' => 'Cryptocurrency',
                     'institution' => 'Coinbase',
-                    'balance' => fake()->randomFloat(2, 100, 20000),
+                    'balance' => $faker->randomFloat(2, 100, 20000),
                     'description' => 'Cryptocurrency holdings',
                     'probability' => 40, // 40% of users have cryptocurrency
                 ],
             ];
 
             foreach ($investments as $investment) {
-                if (fake()->boolean($investment['probability'])) {
+                if ($faker->boolean($investment['probability'])) {
                     Account::create([
                         'user_id' => $user->id,
                         'name' => $investment['name'],
-                        'account_number' => 'IN' . fake()->unique()->numerify('#########'),
+                        'account_number' => 'IN' . $faker->unique()->numerify('#########'),
                         'institution' => $investment['institution'],
                         'type' => 'investment',
                         'balance' => $investment['balance'],

@@ -123,4 +123,8 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'frontend_url' => env('FRONTEND_URL', 'https://fintecfun-frontend-a0753a40ce39.herokuapp.com'),
+
+    'asset_url' => env('ASSET_URL'),
+
 ];
