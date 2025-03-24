@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8AD3C7" />
+      <stop offset="100%" stop-color="#5EA4B1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Chip with filled background -->
+  <rect x="100" y="100" width="312" height="312" rx="40" fill="#222222" stroke="url(#gradient)" stroke-width="36" />
+  
+  <!-- Top pins -->
+  <rect x="170" y="55" width="36" height="45" rx="18" fill="url(#gradient)" />
+  <rect x="238" y="55" width="36" height="45" rx="18" fill="url(#gradient)" />
+  <rect x="306" y="55" width="36" height="45" rx="18" fill="url(#gradient)" />
+  
+  <!-- Right pins -->
+  <rect x="412" y="170" width="45" height="36" rx="18" fill="url(#gradient)" />
+  <rect x="412" y="238" width="45" height="36" rx="18" fill="url(#gradient)" />
+  <rect x="412" y="306" width="45" height="36" rx="18" fill="url(#gradient)" />
+  
+  <!-- Bottom pins -->
+  <rect x="170" y="412" width="36" height="45" rx="18" fill="url(#gradient)" />
+  <rect x="238" y="412" width="36" height="45" rx="18" fill="url(#gradient)" />
+  <rect x="306" y="412" width="36" height="45" rx="18" fill="url(#gradient)" />
+  
+  <!-- Left pins -->
+  <rect x="55" y="170" width="45" height="36" rx="18" fill="url(#gradient)" />
+  <rect x="55" y="238" width="45" height="36" rx="18" fill="url(#gradient)" />
+  <rect x="55" y="306" width="45" height="36" rx="18" fill="url(#gradient)" />
+  
+  <!-- Dollar Sign using text -->
+  <text x="256" y="325" text-anchor="middle" font-family="Arial, sans-serif" font-size="220" font-weight="bold" fill="url(#gradient)">$</text>
+</svg> 
