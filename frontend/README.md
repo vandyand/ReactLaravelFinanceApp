@@ -1,54 +1,106 @@
-# React + TypeScript + Vite
+# FinTec React Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This directory contains the frontend application for the FinTec personal finance management platform, built with React, TypeScript, and Material UI.
 
-Currently, two official plugins are available:
+## Technology Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19**: Latest version of the React library for building user interfaces
+- **TypeScript**: For type-safe code and better developer experience
+- **Vite**: Fast, modern frontend build tool
+- **Redux Toolkit**: State management solution
+- **Material UI 6**: Comprehensive UI component library
+- **React Router 7**: Declarative routing for React
+- **Axios**: Promise-based HTTP client
+- **Formik & Yup**: Form handling and validation
+- **Chart.js & React-Chartjs-2**: Data visualization
+- **JWT Authentication**: Secure authentication flow
 
-## Expanding the ESLint configuration
+## Application Architecture
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Core Features
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+The application provides comprehensive personal finance management tools including:
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- **Dashboard**: Overview of financial status with charts and summaries
+- **Accounts**: Manage bank accounts and track balances
+- **Transactions**: Record, categorize, and analyze income and expenses
+- **Budgets**: Create and monitor monthly or category-based budgets
+- **Investments**: Track investment portfolio performance
+- **Categories**: Customize transaction categories for better organization
+- **User Profile**: Manage user information and settings
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Project Structure
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+- `src/components/`: Reusable UI components
+- `src/pages/`: Main application views
+- `src/services/`: API service layer and utilities
+- `src/store/`: Redux state management
+  - `src/store/slices/`: Feature-specific Redux slices
+- `src/assets/`: Static assets like images
+- `src/theme.ts`: Material UI theme customization
+
+### State Management
+
+The application uses Redux Toolkit with a slice-based architecture:
+
+- `authSlice`: Authentication state
+- `accountSlice`: User accounts management
+- `transactionSlice`: Financial transactions
+- `budgetSlice`: Budget tracking
+- `categorySlice`: Transaction categories
+- `investmentSlice`: Investment tracking
+
+### API Integration
+
+The frontend communicates with the Laravel backend API using axios. The `api.ts` service provides:
+
+- Centralized API configuration
+- JWT token management
+- Request/response interceptors for authentication
+- Automatic handling of expired tokens
+
+## Development Setup
+
+1. Install dependencies:
+
+   ```
+   npm install
+   ```
+
+2. Configure environment variables:
+   Create a `.env` file with:
+
+   ```
+   VITE_API_URL=http://localhost:8000/api
+   ```
+
+3. Start the development server:
+   ```
+   npm run dev
+   ```
+
+## Production Deployment
+
+The application is configured for easy deployment on platforms like Heroku or Vercel:
+
+1. Build the production bundle:
+
+   ```
+   npm run build
+   ```
+
+2. Serve the static files:
+   ```
+   npm start
+   ```
+
+## Design Decisions
+
+- **Component Architecture**: Modular components designed for reusability
+- **Responsive Design**: Mobile-first approach ensuring great UX across devices
+- **Theme Customization**: Material UI theming for consistent visual identity
+- **Form Validation**: Client-side validation using Yup schemas
+- **Data Visualization**: Interactive charts for financial insights
+- **Authentication Flow**: Protected routes with JWT token management
+- **Error Handling**: Comprehensive error handling with user-friendly notifications
+- **TypeScript Integration**: Strong typing throughout for improved code quality
